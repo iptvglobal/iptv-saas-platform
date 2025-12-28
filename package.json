@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';import.meta.require = createRequire(import.meta.url);\" --keep-names",
+    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';import.meta.require = createRequire(import.meta.url);import crypto from 'crypto';if (!globalThis.crypto) { globalThis.crypto = crypto.webcrypto; }\" --keep-names",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
