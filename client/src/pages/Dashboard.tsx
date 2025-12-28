@@ -12,7 +12,9 @@ import {
   CheckCircle,
   XCircle,
   ArrowRight,
-  Tv
+  Tv,
+  MessageCircle,
+  BookOpen
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -64,12 +66,46 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Welcome back, {user?.name || "User"}!</h1>
             <p className="text-muted-foreground">Here's an overview of your IPTV subscription</p>
           </div>
-          <Link href="/plans">
-            <Button className="gradient-primary">
-              <Package className="mr-2 h-4 w-4" />
-              Browse Plans
-            </Button>
-          </Link>
+<div className="flex flex-wrap gap-3">
+  {/* Browse Plans */}
+  <Link href="/plans">
+    <Button className="gradient-primary">
+      <Package className="mr-2 h-4 w-4" />
+      Browse Plans
+    </Button>
+  </Link>
+
+  {/* Free Trial Chat */}
+  <a
+    href="https://members.iptvtop.live/chat"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Button
+      variant="outline"
+      className="border-emerald-500 text-emerald-600 hover:bg-emerald-50"
+    >
+      <MessageCircle className="mr-2 h-4 w-4" />
+      Request Free Trial 24H
+    </Button>
+  </a>
+
+  {/* Tutorial */}
+  <a
+    href="https://revsfr.com/iptv-guide/"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Button
+      variant="outline"
+      className="border-blue-500 text-blue-600 hover:bg-blue-50"
+    >
+      <BookOpen className="mr-2 h-4 w-4" />
+      Tutorial
+    </Button>
+  </a>
+</div>
+
         </div>
         
         {/* Stats Cards */}
