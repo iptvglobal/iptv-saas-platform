@@ -62,6 +62,10 @@ export default function AdminChat() {
       content: newMessage.trim()
     });
   };
+
+  const handleBackToList = () => {
+    setSelectedConversation(null);
+  };
   
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,18 +75,25 @@ export default function AdminChat() {
   
   return (
     <AdminLayout>
-      <div className="h-[calc(100vh-8rem)]">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">Support Chat</h1>
-            <p className="text-muted-foreground">Manage customer conversations</p>
-          </div>
+      <div className="h-[calc(100vh-6rem)] md:h-[calc(100vh-8rem)] flex flex-col overflow-hidden">
+        {/* Header - Hidden on mobile when chat is open */}
+        <div className={`mb-4 flex-shrink-0 ${selectedConversation ? 'hidden md:block' : ''}`}>
+          <h1 className="text-xl md:text-2xl font-bold">Support Chat</h1>
+          <p className="text-sm text-muted-foreground">Manage customer conversations</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100%-4rem)]">
+        <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
           {/* Conversations List */}
-          <Card className={`md:col-span-1 ${selectedConversation ? 'hidden md:block' : ''}`}>
-            <CardHeader className="pb-3">
+          <Card 
+            className={`
+              w-full md:w-80 lg:w-96
+              flex flex-col
+              flex-shrink-0
+              overflow-hidden
+              ${selectedConversation ? 'hidden md:flex' : 'flex'}
+            `}
+          >
+            <CardHeader className="pb-3 flex-shrink-0">
               <CardTitle className="text-lg">Conversations</CardTitle>
               <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -94,8 +105,8 @@ export default function AdminChat() {
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-20rem)]">
+            <CardContent className="p-0 flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
                 {isLoading ? (
                   <div className="space-y-2 p-4">
                     {[1, 2, 3, 4, 5].map(i => (
@@ -118,15 +129,14 @@ export default function AdminChat() {
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-full bg-primary/10">
+                          <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
                             <User className="h-4 w-4 text-primary" />
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center justify-between">
                               <span className="font-medium truncate">
                                 {getUserName(conv.userId)}
                               </span>
-                              
                             </div>
                             <p className="text-sm text-muted-foreground truncate">
                               {conv.subject || "Support conversation"}
@@ -145,85 +155,96 @@ export default function AdminChat() {
           </Card>
           
           {/* Chat Area */}
-          <Card className={`md:col-span-2 flex flex-col ${!selectedConversation ? 'hidden md:flex' : ''}`}>
+          <Card 
+            className={`
+              flex-1
+              flex flex-col
+              min-w-0
+              overflow-hidden
+              ${!selectedConversation ? 'hidden md:flex' : 'flex'}
+            `}
+          >
             {selectedConversation ? (
               <>
                 {/* Chat Header */}
-                <CardHeader className="pb-3 border-b">
+                <CardHeader className="pb-3 border-b flex-shrink-0">
                   <div className="flex items-center gap-3">
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="md:hidden"
-                      onClick={() => setSelectedConversation(null)}
+                      className="md:hidden flex-shrink-0 -ml-2"
+                      onClick={handleBackToList}
                     >
-                      <ArrowLeft className="h-4 w-4" />
+                      <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <div className="p-2 rounded-full bg-primary/10">
+                    <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
                       <User className="h-4 w-4 text-primary" />
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <CardTitle className="text-lg truncate">
                         {selectedConv ? getUserName(selectedConv.userId) : "Chat"}
                       </CardTitle>
-                      <CardDescription>Support conversation</CardDescription>
+                      <CardDescription className="truncate">Support conversation</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 
                 {/* Messages */}
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  <ScrollArea className="h-[calc(100vh-24rem)] p-4">
-                    {messagesLoading ? (
-                      <div className="space-y-3">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="skeleton h-16 rounded-lg" />
-                        ))}
-                      </div>
-                    ) : !messages || messages.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No messages yet</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {messages.map((msg: { id: number; senderRole: string; message: string; createdAt: Date }) => {
-                          const isAdmin = msg.senderRole === "admin" || msg.senderRole === "agent";
-                          return (
-                            <div 
-                              key={msg.id} 
-                              className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
-                            >
+                  <ScrollArea className="h-full">
+                    <div className="p-4">
+                      {messagesLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="skeleton h-16 rounded-lg" />
+                          ))}
+                        </div>
+                      ) : !messages || messages.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No messages yet</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {messages.map((msg: { id: number; senderRole: string; message: string; createdAt: Date }) => {
+                            const isAdmin = msg.senderRole === "admin" || msg.senderRole === "agent";
+                            return (
                               <div 
-                                className={`max-w-[75%] rounded-lg p-3 ${
-                                  isAdmin 
-                                    ? 'bg-primary text-primary-foreground' 
-                                    : 'bg-muted'
-                                }`}
-                                style={{ 
-                                  wordWrap: 'break-word', 
-                                  overflowWrap: 'break-word',
-                                  wordBreak: 'break-word'
-                                }}
+                                key={msg.id} 
+                                className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                               >
-                                <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
-                                <p className={`text-xs mt-1 ${
-                                  isAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                                }`}>
-                                  {format(new Date(msg.createdAt), "h:mm a")}
-                                </p>
+                                <div 
+                                  className={`max-w-[75%] rounded-lg p-3 break-words ${
+                                    isAdmin 
+                                      ? 'bg-primary text-primary-foreground' 
+                                      : 'bg-muted'
+                                  }`}
+                                  style={{ 
+                                    wordWrap: 'break-word', 
+                                    overflowWrap: 'break-word',
+                                    wordBreak: 'break-word',
+                                    hyphens: 'auto'
+                                  }}
+                                >
+                                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                  <p className={`text-xs mt-1 ${
+                                    isAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                  }`}>
+                                    {format(new Date(msg.createdAt), "h:mm a")}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    )}
+                            );
+                          })}
+                          <div ref={messagesEndRef} />
+                        </div>
+                      )}
+                    </div>
                   </ScrollArea>
                 </CardContent>
                 
                 {/* Message Input */}
-                <div className="p-4 border-t">
+                <div className="p-4 border-t flex-shrink-0 bg-background">
                   <div className="flex gap-2">
                     <Input
                       placeholder="Type a message..."
@@ -235,10 +256,12 @@ export default function AdminChat() {
                           handleSendMessage();
                         }
                       }}
+                      className="flex-1 min-w-0"
                     />
                     <Button 
                       onClick={handleSendMessage}
                       disabled={!newMessage.trim() || sendMessage.isPending}
+                      className="flex-shrink-0"
                     >
                       <Send className="h-4 w-4" />
                     </Button>
@@ -246,7 +269,7 @@ export default function AdminChat() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
                 <div className="text-center">
                   <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>Select a conversation to start chatting</p>

@@ -14,7 +14,8 @@ import {
   Send, 
   Plus,
   User,
-  Shield
+  Shield,
+  ArrowLeft
 } from "lucide-react";
 
 export default function Chat() {
@@ -23,6 +24,7 @@ export default function Chat() {
   
   const { data: conversations, isLoading: conversationsLoading } = trpc.chat.myConversations.useQuery();
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+  const [showMobileChat, setShowMobileChat] = useState(false);
   const { data: messages, isLoading: messagesLoading } = trpc.chat.getMessages.useQuery(
     { conversationId: selectedConversationId! },
     { enabled: !!selectedConversationId, refetchInterval: 3000 }
@@ -33,6 +35,7 @@ export default function Chat() {
       utils.chat.myConversations.invalidate();
       if (data.id) {
         setSelectedConversationId(data.id);
+        setShowMobileChat(true);
       }
     }
   });
@@ -81,18 +84,36 @@ export default function Chat() {
       toast.error("Failed to send message");
     }
   };
+
+  const handleSelectConversation = (convId: number) => {
+    setSelectedConversationId(convId);
+    setShowMobileChat(true);
+  };
+
+  const handleBackToList = () => {
+    setShowMobileChat(false);
+  };
   
   const selectedConversation = conversations?.find(c => c.id === selectedConversationId);
   
   return (
     <UserLayout>
-      <div className="h-[calc(100vh-12rem)]">
-        <Card className="h-full">
-          <div className="flex h-full">
+      <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-12rem)]">
+        <Card className="h-full overflow-hidden">
+          <div className="flex h-full overflow-hidden">
             {/* Conversations List */}
-            <div className="w-80 border-r flex flex-col">
-              <div className="p-4 border-b">
-                <div className="flex items-center justify-between mb-4">
+            <div 
+              className={`
+                w-full md:w-80 
+                border-r 
+                flex flex-col
+                flex-shrink-0
+                overflow-hidden
+                ${showMobileChat ? 'hidden md:flex' : 'flex'}
+              `}
+            >
+              <div className="p-4 border-b flex-shrink-0">
+                <div className="flex items-center justify-between">
                   <h2 className="font-semibold">Messages</h2>
                   <Button 
                     size="sm" 
@@ -129,7 +150,7 @@ export default function Chat() {
                     {conversations.map(conv => (
                       <button
                         key={conv.id}
-                        onClick={() => setSelectedConversationId(conv.id)}
+                        onClick={() => handleSelectConversation(conv.id)}
                         className={`w-full p-3 rounded-lg text-left transition-colors ${
                           selectedConversationId === conv.id 
                             ? "bg-primary/10 border border-primary/20" 
@@ -137,16 +158,16 @@ export default function Chat() {
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
+                          <Avatar className="h-10 w-10 flex-shrink-0">
                             <AvatarFallback className="bg-primary/10 text-primary">
                               <MessageCircle className="h-5 w-5" />
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="font-medium truncate">
                               {conv.subject || `Conversation #${conv.id}`}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground truncate">
                               {conv.lastMessageAt 
                                 ? format(new Date(conv.lastMessageAt), "MMM d, h:mm a")
                                 : "No messages yet"
@@ -162,22 +183,39 @@ export default function Chat() {
             </div>
             
             {/* Chat Area */}
-            <div className="flex-1 flex flex-col">
+            <div 
+              className={`
+                flex-1 
+                flex flex-col
+                min-w-0
+                overflow-hidden
+                ${!showMobileChat ? 'hidden md:flex' : 'flex'}
+              `}
+            >
               {selectedConversationId ? (
                 <>
                   {/* Chat Header */}
-                  <div className="p-4 border-b">
+                  <div className="p-4 border-b flex-shrink-0">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                      {/* Back button - only on mobile */}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleBackToList}
+                        className="md:hidden flex-shrink-0 -ml-2"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                      <Avatar className="h-10 w-10 flex-shrink-0">
                         <AvatarFallback className="bg-primary/10 text-primary">
                           <MessageCircle className="h-5 w-5" />
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <div className="font-medium">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="font-medium truncate">
                           {selectedConversation?.subject || `Conversation #${selectedConversationId}`}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground truncate">
                           Support Team
                         </div>
                       </div>
@@ -185,77 +223,82 @@ export default function Chat() {
                   </div>
                   
                   {/* Messages */}
-                  <ScrollArea className="flex-1 p-4">
-                    {messagesLoading ? (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="skeleton h-16 rounded-lg" />
-                        ))}
-                      </div>
-                    ) : !messages || messages.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-muted-foreground">
-                        <div className="text-center">
-                          <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                          <p>No messages yet</p>
-                          <p className="text-sm">Send a message to start the conversation</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {messages.map(msg => {
-                          const isOwn = msg.senderId === user?.id;
-                          const isStaff = msg.senderRole === "admin" || msg.senderRole === "agent";
-                          
-                          return (
-                            <div
-                              key={msg.id}
-                              className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
-                            >
-                              <Avatar className="h-8 w-8 shrink-0">
-                                <AvatarFallback className={isStaff ? "bg-primary text-primary-foreground" : "bg-muted"}>
-                                  {isStaff ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className={`max-w-[75%] ${isOwn ? "text-right" : ""}`}>
-                                <div
-                                  className={`inline-block p-3 rounded-lg ${
-                                    isOwn 
-                                      ? "bg-primary text-primary-foreground" 
-                                      : "bg-muted"
-                                  }`}
-                                  style={{ 
-                                    wordWrap: 'break-word', 
-                                    overflowWrap: 'break-word',
-                                    wordBreak: 'break-word'
-                                  }}
-                                >
-                                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(msg.createdAt), "h:mm a")}
-                                </div>
-                              </div>
+                  <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
+                      <div className="p-4">
+                        {messagesLoading ? (
+                          <div className="space-y-4">
+                            {[1, 2, 3].map(i => (
+                              <div key={i} className="skeleton h-16 rounded-lg" />
+                            ))}
+                          </div>
+                        ) : !messages || messages.length === 0 ? (
+                          <div className="h-full flex items-center justify-center text-muted-foreground py-20">
+                            <div className="text-center">
+                              <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                              <p>No messages yet</p>
+                              <p className="text-sm">Send a message to start the conversation</p>
                             </div>
-                          );
-                        })}
-                        <div ref={messagesEndRef} />
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {messages.map(msg => {
+                              const isOwn = msg.senderId === user?.id;
+                              const isStaff = msg.senderRole === "admin" || msg.senderRole === "agent";
+                              
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`flex gap-2 md:gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
+                                >
+                                  <Avatar className="h-8 w-8 flex-shrink-0">
+                                    <AvatarFallback className={isStaff ? "bg-primary text-primary-foreground" : "bg-muted"}>
+                                      {isStaff ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className={`max-w-[70%] min-w-0 ${isOwn ? "text-right" : ""}`}>
+                                    <div
+                                      className={`inline-block p-3 rounded-lg break-words ${
+                                        isOwn 
+                                          ? "bg-primary text-primary-foreground" 
+                                          : "bg-muted"
+                                      }`}
+                                      style={{ 
+                                        wordWrap: 'break-word', 
+                                        overflowWrap: 'break-word',
+                                        wordBreak: 'break-word',
+                                        hyphens: 'auto'
+                                      }}
+                                    >
+                                      <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {format(new Date(msg.createdAt), "h:mm a")}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <div ref={messagesEndRef} />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </ScrollArea>
+                    </ScrollArea>
+                  </div>
                   
                   {/* Message Input */}
-                  <form onSubmit={handleSendMessage} className="p-4 border-t">
+                  <form onSubmit={handleSendMessage} className="p-4 border-t flex-shrink-0 bg-background">
                     <div className="flex gap-2">
                       <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1"
+                        className="flex-1 min-w-0"
                       />
                       <Button 
                         type="submit" 
                         disabled={!newMessage.trim() || sendMessage.isPending}
-                        className="gradient-primary"
+                        className="gradient-primary flex-shrink-0"
                       >
                         <Send className="h-4 w-4" />
                       </Button>
@@ -263,7 +306,7 @@ export default function Chat() {
                   </form>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
                   <div className="text-center">
                     <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <h3 className="font-semibold mb-2">Welcome to Support Chat</h3>
