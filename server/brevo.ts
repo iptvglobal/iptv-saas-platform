@@ -330,3 +330,61 @@ function viewCredentialsButton() {
     </div>
   `;
 }
+export async function sendAdminNewOrderEmail(params: {
+  orderId: number;
+  userEmail: string;
+  planName: string;
+  connections: number;
+  price: string;
+  paymentMethod: string;
+}) {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!adminEmail) return;
+
+  const {
+    orderId,
+    userEmail,
+    planName,
+    connections,
+    price,
+    paymentMethod
+  } = params;
+
+  const content = `
+    <h2 style="color:#1e293b">🆕 New Order Received</h2>
+
+    <table width="100%" cellpadding="12"
+      style="margin-top:24px;
+             background:#f8fafc;
+             border-radius:12px">
+      <tr><td>Order ID</td><td>#${orderId}</td></tr>
+      <tr><td>User Email</td><td>${userEmail}</td></tr>
+      <tr><td>Plan</td><td>${planName}</td></tr>
+      <tr><td>Connections</td><td>${connections}</td></tr>
+      <tr><td>Payment</td><td>${paymentMethod}</td></tr>
+      <tr>
+        <td><strong>Total</strong></td>
+        <td><strong>$${price}</strong></td>
+      </tr>
+    </table>
+
+    <div style="margin-top:24px;text-align:center">
+      <a href="https://members.iptvtop.live/admin/orders/${orderId}"
+         style="display:inline-block;
+                background:#ef4444;
+                color:#fff;
+                padding:12px 28px;
+                border-radius:8px;
+                font-weight:700;
+                text-decoration:none">
+        🔎 View Order
+      </a>
+    </div>
+  `;
+
+  await sendEmail(
+    adminEmail,
+    `🆕 New Order #${orderId}`,
+    emailTemplate(content)
+  );
+}
