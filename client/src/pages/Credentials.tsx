@@ -18,7 +18,8 @@ import {
   Tv,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  BookOpen
 } from "lucide-react";
 
 export default function Credentials() {
@@ -216,12 +217,31 @@ export default function Credentials() {
             <h1 className="text-2xl font-bold">My Credentials</h1>
             <p className="text-muted-foreground">Access your IPTV login information</p>
           </div>
-          <Link href="/plans">
-            <Button className="gradient-primary gap-2">
-              <Key className="h-4 w-4" />
-              Get More Connections
-            </Button>
-          </Link>
+<div className="flex flex-wrap gap-3">
+  {/* Get More Connections */}
+  <Link href="/plans">
+    <Button className="gradient-primary gap-2">
+      <Key className="h-4 w-4" />
+      Get More Connections
+    </Button>
+  </Link>
+
+  {/* Tutorial Button */}
+  <a
+    href="https://revsfr.com/iptv-guide/"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Button
+      variant="outline"
+      className="gap-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+    >
+      <BookOpen className="h-4 w-4" />
+      Tutorial
+    </Button>
+  </a>
+</div>
+
         </div>
         
         {/* Stats */}
