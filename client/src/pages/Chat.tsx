@@ -216,15 +216,20 @@ export default function Chat() {
                                   {isStaff ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
                                 </AvatarFallback>
                               </Avatar>
-                              <div className={`max-w-[70%] ${isOwn ? "text-right" : ""}`}>
+                              <div className={`max-w-[75%] ${isOwn ? "text-right" : ""}`}>
                                 <div
                                   className={`inline-block p-3 rounded-lg ${
                                     isOwn 
                                       ? "bg-primary text-primary-foreground" 
                                       : "bg-muted"
                                   }`}
+                                  style={{ 
+                                    wordWrap: 'break-word', 
+                                    overflowWrap: 'break-word',
+                                    wordBreak: 'break-word'
+                                  }}
                                 >
-                                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {format(new Date(msg.createdAt), "h:mm a")}

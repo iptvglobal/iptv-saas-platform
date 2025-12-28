@@ -195,13 +195,18 @@ export default function AdminChat() {
                               className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                             >
                               <div 
-                                className={`max-w-[80%] rounded-lg p-3 ${
+                                className={`max-w-[75%] rounded-lg p-3 ${
                                   isAdmin 
                                     ? 'bg-primary text-primary-foreground' 
                                     : 'bg-muted'
                                 }`}
+                                style={{ 
+                                  wordWrap: 'break-word', 
+                                  overflowWrap: 'break-word',
+                                  wordBreak: 'break-word'
+                                }}
                               >
-                                <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                                <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                                 <p className={`text-xs mt-1 ${
                                   isAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                 }`}>

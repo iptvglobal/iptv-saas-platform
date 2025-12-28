@@ -23,7 +23,10 @@ export async function signUpWithEmail(email: string, password: string, name?: st
           name: name || email.split('@')[0],
         },
         emailRedirectTo: undefined, // We'll handle OTP manually
+        shouldCreateUser: true,
       }
+    }, {
+      emailRedirectTo: undefined,
     });
 
     if (error) {
