@@ -1,0 +1,30 @@
+{
+  "query": "SELECT id, name, description, \"durationDays\", \"maxConnections\", \"isActive\", \"promoText\", \"createdAt\" FROM plans ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user JnBotQctVQjgjzR.root --database itiohieSkbaJ2fEBPEPVvu --execute SELECT id, name, description, \"durationDays\", \"maxConnections\", \"isActive\", \"promoText\", \"createdAt\" FROM plans ORDER BY id;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Monthly Premium",
+      "description": "Premium IPTV subscription with access to all channels",
+      "durationDays": "durationDays",
+      "maxConnections": "maxConnections",
+      "isActive": "isActive",
+      "promoText": "promoText",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "60001",
+      "name": "3 months",
+      "description": "3 months",
+      "durationDays": "durationDays",
+      "maxConnections": "maxConnections",
+      "isActive": "isActive",
+      "promoText": "promoText",
+      "createdAt": "createdAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdescription\tdurationDays\tmaxConnections\tisActive\tpromoText\tcreatedAt\n1\tMonthly Premium\tPremium IPTV subscription with access to all channels\tdurationDays\tmaxConnections\tisActive\tpromoText\tcreatedAt\n60001\t3 months\t3 months\tdurationDays\tmaxConnections\tisActive\tpromoText\tcreatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1549
+}

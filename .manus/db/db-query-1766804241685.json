@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, name, planId, minConnections, maxConnections, invoiceId, isActive FROM paymentWidgets;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user JnBotQctVQjgjzR.root --database itiohieSkbaJ2fEBPEPVvu --execute SELECT id, name, planId, minConnections, maxConnections, invoiceId, isActive FROM paymentWidgets;",
+  "rows": [
+    {
+      "id": "30002",
+      "name": "Crypto",
+      "planId": "1",
+      "minConnections": "1",
+      "maxConnections": "10",
+      "invoiceId": "5360718797",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tplanId\tminConnections\tmaxConnections\tinvoiceId\tisActive\n30002\tCrypto\t1\t1\t10\t5360718797\t1\n",
+  "stderr": "",
+  "execution_time_ms": 88
+}

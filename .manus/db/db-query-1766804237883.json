@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM paymentWidgets LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user JnBotQctVQjgjzR.root --database itiohieSkbaJ2fEBPEPVvu --execute SELECT * FROM paymentWidgets LIMIT 10;",
+  "rows": [
+    {
+      "id": "30002",
+      "planId": "1",
+      "isActive": "1",
+      "createdAt": "2025-12-27 01:28:58",
+      "updatedAt": "2025-12-27 01:28:58",
+      "name": "Crypto",
+      "minConnections": "1",
+      "maxConnections": "10",
+      "invoiceId": "5360718797"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplanId\tisActive\tcreatedAt\tupdatedAt\tname\tminConnections\tmaxConnections\tinvoiceId\n30002\t1\t1\t2025-12-27 01:28:58\t2025-12-27 01:28:58\tCrypto\t1\t10\t5360718797\n",
+  "stderr": "",
+  "execution_time_ms": 99
+}
