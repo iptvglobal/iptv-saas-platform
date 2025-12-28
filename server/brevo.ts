@@ -1,2 +1,237 @@
-import * as brevo from '@getbrevo/brevo'; const apiKey = process.env.BREVO_API_KEY; const senderEmail = process.env.BREVO_SENDER_EMAIL; const senderName = process.env.BREVO_SENDER_NAME; const appUrl = process.env.APP_URL || 'https://members.iptvtop.live'; if (!apiKey || !senderEmail || !senderName) { console.warn('[Brevo] WARNING: Email credentials not configured (BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME). Email notifications will be disabled. Set these variables to enable email delivery.'); } const apiInstance = new brevo.TransactionalEmailsApi(); apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey || ''); export interface SendEmailParams { to: string; toName?: string; subject: string; htmlContent: string; textContent?: string; } /** * Modern email template wrapper with dashboard button */ function createEmailTemplate(content: string, showDashboardButton: boolean = true): string { const dashboardButton = showDashboardButton ? <div style="text-align: center; margin: 30px 0;"> <a href="${appUrl}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);"> Go to Dashboard </a> </div> : ''; return <!DOCTYPE html> <html> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>IPTV Premium</title> </head> <body style="margin: 0; padding: 0; background-color: #f7f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;"> <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7f9fc; padding: 40px 20px;"> <tr> <td align="center"> <!-- Email Container --> <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;"> <!-- Header --> <tr> <td style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px 40px; text-align: center;"> <div style="background-color: white; width: 56px; height: 56px; border-radius: 12px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;"> <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"> <rect x="2" y="3" width="20" height="14" rx="2" stroke="#4f46e5" stroke-width="2"/> <path d="M2 7h20M8 21h8" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/> </svg> </div> <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;"> IPTV Premium </h1> <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;"> Your gateway to unlimited entertainment </p> </td> </tr> <!-- Content --> <tr> <td style="padding: 40px;"> ${content} </td> </tr> <!-- Dashboard Button --> ${dashboardButton ? <tr> <td style="padding: 0 40px 40px;"> ${dashboardButton} </td> </tr> : ''} <!-- Footer --> <tr> <td style="background-color: #f8f9fa; padding: 24px 40px; text-align: center; border-top: 1px solid #e9ecef;"> <p style="margin: 0 0 8px; color: #6c757d; font-size: 13px;"> Need help? Contact our support team </p>
- <p style="margin: 0 0 16px; color: #6c757d; font-size: 13px;"> <a href="https://members.iptvtop.live/chat" style="color: #4f46e5; text-decoration: none; font-weight: 600;">Chat Support</a> </p> <p style="margin: 0; color: #adb5bd; font-size: 12px;"> © ${new Date().getFullYear()} IPTV Premium. All rights reserved. </p> </td> </tr> </table> </td> </tr> </table> </body> </html> ; } /** * Send transactional email via Brevo */ export async function sendEmail(params: SendEmailParams): Promise<boolean> { if (!apiKey || !senderEmail || !senderName) { console.error('[Brevo] Cannot send email: missing credentials'); return false; } try { const sendSmtpEmail = new brevo.SendSmtpEmail(); sendSmtpEmail.sender = { email: senderEmail, name: senderName }; sendSmtpEmail.to = [{ email: params.to, name: params.toName || params.to }]; sendSmtpEmail.subject = params.subject; sendSmtpEmail.htmlContent = params.htmlContent; if (params.textContent) { sendSmtpEmail.textContent = params.textContent; } const result = await apiInstance.sendTransacEmail(sendSmtpEmail); console.log('[Brevo] Email sent successfully:', result.body.messageId); return true; } catch (error: any) { console.error('[Brevo] Failed to send email:', error.message || error); return false; } } /** * Test Brevo API connection */ export async function testBrevoConnection(): Promise<boolean> { if (!apiKey) { console.error('[Brevo] No API key provided'); return false; } try { // Test by getting account info const accountApi = new brevo.AccountApi(); accountApi.setApiKey(brevo.AccountApiApiKeys.apiKey, apiKey); const account = await accountApi.getAccount(); console.log('[Brevo] Connection test successful. Account:', account.body.email); return true; } catch (error: any) { console.error('[Brevo] Connection test failed:', error.message || error); return false; } } /** * Send OTP verification email */ export async function sendOTPEmail(email: string, otp: string): Promise<boolean> { const content = <div style="text-align: center;"> <h2 style="margin: 0 0 16px; color: #1e293b; font-size: 28px; font-weight: 700;"> Verify Your Email </h2> <p style="margin: 0 0 32px; color: #64748b; font-size: 16px; line-height: 1.6;"> Thank you for signing up! Please use the verification code below to complete your registration. </p> </div> <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; padding: 32px; text-align: center; margin: 24px 0;"> <div style="font-size: 42px; font-weight: 700; letter-spacing: 8px; color: #4f46e5; font-family: 'Courier New', monospace;"> ${otp} </div> <p style="margin: 16px 0 0; color: #6c757d; font-size: 14px;"> This code expires in <strong>10 minutes</strong> </p> </div> <div style="margin-top: 32px; padding: 16px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;"> <p style="margin: 0; color: #856404; font-size: 14px;"> <strong>Security tip:</strong> If you didn't request this code, please ignore this email. </p> </div> ; return sendEmail({ to: email, subject: 'Verify Your Email - IPTV Premium', htmlContent: createEmailTemplate(content, true), textContent: Verify Your Email\n\nYour verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nGo to dashboard: ${appUrl}/dashboard }); } /** * Send order confirmation email */ export async function sendOrderConfirmationEmail(params: { to: string; userName: string; orderId: number; planName: string; connections: number; price: string; paymentMethod: string; }): Promise<boolean> { const { to, userName, orderId, planName, connections, price, paymentMethod } = params; const content = <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;"> Order Confirmed! 🎉 </h2> <p style="margin: 0 0 24px; color: #64748b; font-size: 16px;"> Hi <strong>${userName}</strong>, thank you for your order! </p> <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;"> <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;"> <tr> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Order ID</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> #${orderId} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Plan</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${planName} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Connections</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${connections} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Payment Method</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${paymentMethod} </td> </tr> <tr style="border-top: 2px solid #4f46e5;"> <td style="color: #1e293b; font-size: 16px; font-weight: 700; padding: 12px 0;">Total</td> <td style="color: #4f46e5; font-size: 20px; font-weight: 700; text-align: right; padding: 12px 0;"> $${price} </td> </tr> </table> </div> <div style="background-color: #e7f3ff; border-left: 4px solid #0d6efd; border-radius: 4px; padding: 16px; margin-top: 24px;"> <p style="margin: 0; color: #084298; font-size: 14px; line-height: 1.6;"> <strong>What's next?</strong><br> Your order is pending verification. We'll notify you once it's approved and your credentials are ready! </p> </div> ; return sendEmail({ to, toName: userName, subject: Order Confirmation #${orderId} - IPTV Premium, htmlContent: createEmailTemplate(content, true) }); } /** * Send credentials delivery email */ export async function sendCredentialsEmail( email: string, credentials: { type: string; username?: string; password?: string; url?: string; m3uUrl?: string; epgUrl?: string; portalUrl?: string; macAddress?: string; expiresAt: Date; } ): Promise<boolean> { let credentialsContent = ''; if (credentials.type === 'xtream') { credentialsContent = <tr> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Type</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> Xtream Codes </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Server URL</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;"> ${credentials.url} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Username</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${credentials.username} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Password</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${credentials.password} </td> </tr> ; } else if (credentials.type === 'm3u') { credentialsContent = <tr> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Type</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> M3U Playlist </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">M3U URL</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;"> ${credentials.m3uUrl} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">EPG URL</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;"> ${credentials.epgUrl || 'N/A'} </td> </tr> ; } else if (credentials.type === 'portal') { credentialsContent = <tr> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Type</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> Portal URL </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Portal URL</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;"> ${credentials.portalUrl} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">MAC Address</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${credentials.macAddress} </td> </tr> ; } const content = <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;"> Your IPTV Credentials 🔑 </h2> <p style="margin: 0 0 24px; color: #64748b; font-size: 16px;"> Your order has been verified! Here are your access credentials: </p> <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;"> <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;"> ${credentialsContent} <tr style="border-top: 2px solid #4f46e5;"> <td style="color: #1e293b; font-size: 14px; font-weight: 700; padding: 12px 0;">Expires</td> <td style="color: #4f46e5; font-size: 14px; font-weight: 700; text-align: right; padding: 12px 0;"> ${credentials.expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} </td> </tr> </table> </div> <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; padding: 16px; margin-top: 24px;"> <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;"> <strong>⚠️ Important:</strong> Keep these credentials safe and do not share them with others. You can always find them in your dashboard. </p> </div> ; return sendEmail({ to: email, subject: 'Your IPTV Credentials - IPTV Premium', htmlContent: createEmailTemplate(content, true) }); } /** * Send payment verification email */ export async function sendPaymentVerificationEmail(params: { to: string; userName: string; orderId: number; planName: string; status: 'verified' | 'rejected'; }): Promise<boolean> { const { to, userName, orderId, planName, status } = params; const isVerified = status === 'verified'; const subject = isVerified ? Payment Verified ✓ - Order #${orderId} : Payment Issue - Order #${orderId}; const content = isVerified ? <div style="text-align: center; margin-bottom: 24px;"> <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;"> <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/> </svg> </div> <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;"> Payment Verified! </h2> <p style="margin: 0; color: #64748b; font-size: 16px;"> Hi <strong>${userName}</strong>, great news! </p> </div> <p style="margin: 0 0 24px; color: #64748b; font-size: 15px; line-height: 1.6;"> Your payment for Order #${orderId} has been successfully verified. </p> <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;"> <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;"> <tr> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Order ID</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> #${orderId} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Plan</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${planName} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Status</td> <td style="color: #10b981; font-size: 14px; font-weight: 700; text-align: right; padding: 8px 0;"> ✓ Verified </td> </tr> </table> </div> <div style="background-color: #d1fae5; border-left: 4px solid #10b981; border-radius: 4px; padding: 16px; margin-top: 24px;"> <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6;"> <strong>What's next?</strong><br> Your IPTV credentials will be sent to you shortly. Check your dashboard for updates! </p> </div> : <div style="text-align: center; margin-bottom: 24px;"> <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;"> <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/> </svg> </div> <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;"> Payment Issue </h2> <p style="margin: 0; color: #64748b; font-size: 16px;"> Hi <strong>${userName}</strong>, </p> </div> <p style="margin: 0 0 24px; color: #64748b; font-size: 15px; line-height: 1.6;"> We're sorry, but there was an issue verifying your payment for Order #${orderId}. </p> <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;"> <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;"> <tr> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Order ID</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> #${orderId} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Plan</td> <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;"> ${planName} </td> </tr> <tr style="border-top: 1px solid #e9ecef;"> <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Status</td> <td style="color: #ef4444; font-size: 14px; font-weight: 700; text-align: right; padding: 8px 0;"> ✗ Rejected </td> </tr> </table> </div> <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; border-radius: 4px; padding: 16px; margin-top: 24px;"> <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;"> <strong>Need help?</strong><br> Please contact our support team for assistance or try placing a new order. </p> </div> ; return sendEmail({ to, toName: userName, subject, htmlContent: createEmailTemplate(content, true), }); }
+import * as brevo from '@getbrevo/brevo';
+
+/* ======================
+   CONFIG
+====================== */
+const apiKey = process.env.BREVO_API_KEY;
+const senderEmail = process.env.BREVO_SENDER_EMAIL;
+const senderName = process.env.BREVO_SENDER_NAME;
+
+const BASE_URL = 'https://members.iptvtop.live';
+const DASHBOARD_URL = `${BASE_URL}/dashboard`;
+const CHAT_URL = `${BASE_URL}/chat`;
+
+if (!apiKey || !senderEmail || !senderName) {
+  console.warn('[Brevo] Missing email credentials');
+}
+
+/* ======================
+   BREVO INIT
+====================== */
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  apiKey || ''
+);
+
+/* ======================
+   CHAT SUPPORT BUTTON
+====================== */
+function chatSupportBlock(): string {
+  return `
+    <div style="margin-top:32px;text-align:center">
+      <p style="margin-bottom:12px;font-size:14px;color:#475569">
+        Need help? Our support team is online
+      </p>
+      <a href="${CHAT_URL}"
+         style="display:inline-block;background:#0ea5e9;color:#fff;
+                padding:12px 26px;border-radius:8px;
+                text-decoration:none;font-weight:600;font-size:14px">
+        💬 Live Chat Support
+      </a>
+    </div>
+  `;
+}
+
+/* ======================
+   DASHBOARD BUTTON
+====================== */
+function dashboardButton(): string {
+  return `
+    <div style="margin:32px 0;text-align:center">
+      <a href="${DASHBOARD_URL}"
+         style="display:inline-block;background:linear-gradient(135deg,#6366f1,#4f46e5);
+                color:#fff;padding:14px 36px;border-radius:10px;
+                text-decoration:none;font-weight:700;font-size:16px">
+        🚀 Go to Dashboard
+      </a>
+    </div>
+  `;
+}
+
+/* ======================
+   MAIN TEMPLATE
+====================== */
+function emailTemplate(content: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Inter,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px">
+<tr>
+<td align="center">
+
+<table width="600" style="background:#ffffff;border-radius:16px;
+                         box-shadow:0 10px 25px rgba(0,0,0,.08);
+                         overflow:hidden">
+
+<tr>
+<td style="padding:32px 40px;text-align:center;
+           background:linear-gradient(135deg,#6366f1,#4f46e5)">
+  <h1 style="margin:0;color:#fff;font-size:24px">IPTV Premium</h1>
+  <p style="margin-top:6px;color:#e0e7ff;font-size:14px">
+    Unlimited Entertainment Access
+  </p>
+</td>
+</tr>
+
+<tr>
+<td style="padding:40px">
+${content}
+${dashboardButton()}
+${chatSupportBlock()}
+</td>
+</tr>
+
+<tr>
+<td style="padding:20px;text-align:center;background:#f8fafc;
+           border-top:1px solid #e5e7eb">
+  <p style="margin:0;font-size:12px;color:#94a3b8">
+    © ${new Date().getFullYear()} IPTV Premium. All rights reserved.
+  </p>
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+</body>
+</html>
+`;
+}
+
+/* ======================
+   SEND EMAIL
+====================== */
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!apiKey) return false;
+
+  const email = new brevo.SendSmtpEmail();
+  email.sender = { email: senderEmail!, name: senderName! };
+  email.to = [{ email: to }];
+  email.subject = subject;
+  email.htmlContent = html;
+
+  await apiInstance.sendTransacEmail(email);
+  return true;
+}
+
+/* ======================
+   OTP EMAIL
+====================== */
+export async function sendOTPEmail(email: string, otp: string) {
+  const content = `
+    <h2 style="color:#1e293b">Verify Your Email</h2>
+    <p style="color:#475569;font-size:15px">
+      Use the verification code below to complete your registration.
+    </p>
+
+    <div style="margin:24px 0;padding:24px;
+                background:#f1f5f9;border-radius:12px;
+                text-align:center">
+      <div style="font-size:38px;font-weight:800;
+                  letter-spacing:6px;color:#4f46e5">
+        ${otp}
+      </div>
+      <p style="margin-top:12px;font-size:13px;color:#64748b">
+        Code expires in 10 minutes
+      </p>
+    </div>
+  `;
+
+  return sendEmail(
+    email,
+    'Verify Your Email - IPTV Premium',
+    emailTemplate(content)
+  );
+}
+
+/* ======================
+   CREDENTIALS EMAIL (FIXED)
+====================== */
+export async function sendCredentialsEmail(
+  email: string,
+  credentials: {
+    type: 'xtream' | 'm3u' | 'portal';
+    username?: string;
+    password?: string;
+    url?: string;
+    m3uUrl?: string;
+    portalUrl?: string;
+    macAddress?: string;
+    expiresAt: Date;
+  }
+) {
+  let rows = '';
+
+  if (credentials.type === 'xtream') {
+    rows = `
+      <tr><td>Server URL</td><td>${credentials.url}</td></tr>
+      <tr><td>Username</td><td>${credentials.username}</td></tr>
+      <tr><td>Password</td><td>${credentials.password}</td></tr>
+    `;
+  }
+
+  const content = `
+    <h2 style="color:#1e293b">Your IPTV Credentials 🔑</h2>
+    <p style="color:#475569">
+      Your subscription is active. Use the details below to connect.
+    </p>
+
+    <table width="100%" cellpadding="12"
+           style="margin-top:24px;border-collapse:collapse;
+                  background:#f8fafc;border-radius:12px">
+      ${rows}
+      <tr style="border-top:1px solid #e5e7eb">
+        <td style="font-weight:600">Expires</td>
+        <td style="color:#4f46e5;font-weight:700">
+          ${credentials.expiresAt.toDateString()}
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin-top:16px;font-size:13px;color:#64748b">
+      ⚠️ Do not share your credentials with anyone.
+    </p>
+  `;
+
+  return sendEmail(
+    email,
+    'Your IPTV Credentials',
+    emailTemplate(content)
+  );
+}
+
+/* ======================
+   PAYMENT STATUS
+====================== */
+export async function sendPaymentVerificationEmail(
+  email: string,
+  status: 'verified' | 'rejected',
+  orderId: number
+) {
+  const content =
+    status === 'verified'
+      ? `<h2 style="color:#16a34a">Payment Verified ✅</h2>
+         <p>Your order #${orderId} has been approved.</p>`
+      : `<h2 style="color:#dc2626">Payment Rejected ❌</h2>
+         <p>There was an issue with order #${orderId}.</p>`;
+
+  return sendEmail(
+    email,
+    `Payment ${status} - Order #${orderId}`,
+    emailTemplate(content)
+  );
+}
