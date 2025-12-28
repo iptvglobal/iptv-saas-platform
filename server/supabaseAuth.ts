@@ -108,7 +108,7 @@ export async function verifyOTP(email: string, otp: string) {
       return { success: false, error: 'Invalid verification code' };
     }
 
-    // Mark email as verified
+    // Mark email as verified - update both email_confirm and user_metadata
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       user.id,
       {
@@ -212,9 +212,28 @@ export async function signInWithEmail(email: string, password: string) {
       return { success: false, error: 'Sign in failed' };
     }
 
-    // Check if email is verified
-    const metadata = data.user.user_metadata || {};
-    if (!metadata.email_verified && !data.user.email_confirmed_at) {
+    // Get the latest user data from admin API to check verification status
+    const { data: { user: adminUser }, error: adminError } = await supabaseAdmin.auth.admin.getUserById(data.user.id);
+    
+    if (adminError || !adminUser) {
+      console.error('[Supabase Auth] Failed to get user details:', adminError?.message);
+      // Continue with the original user data if admin call fails
+    }
+
+    const userToCheck = adminUser || data.user;
+    const metadata = userToCheck.user_metadata || {};
+    
+    // Check if email is verified - check both metadata and email_confirmed_at
+    const isVerified = metadata.email_verified === true || userToCheck.email_confirmed_at !== null;
+    
+    console.log('[Supabase Auth] Sign in attempt:', {
+      email: userToCheck.email,
+      email_verified_metadata: metadata.email_verified,
+      email_confirmed_at: userToCheck.email_confirmed_at,
+      isVerified
+    });
+
+    if (!isVerified) {
       return {
         success: false,
         error: 'Email not verified. Please check your email for the verification code.',
