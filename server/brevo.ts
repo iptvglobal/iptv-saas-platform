@@ -250,29 +250,32 @@ export async function sendCredentialsEmail(
     `;
   }
 
-  const content = `
-    <h2 style="color:#1e293b">Your IPTV Credentials 🔑</h2>
-    <p style="color:#475569">
-      Your subscription is active. Use the details below.
-    </p>
+const content = `
+  <h2 style="color:#1e293b">Your IPTV Credentials 🔑</h2>
+  <p style="color:#475569">
+    Your subscription is active. Use the details below or view them securely in your dashboard.
+  </p>
 
-    <table width="100%" cellpadding="12"
-      style="margin-top:24px;
-             background:#f8fafc;
-             border-radius:12px">
-      ${rows}
-      <tr>
-        <td><strong>Expires</strong></td>
-        <td style="color:#4f46e5;font-weight:700">
-          ${credentials.expiresAt.toDateString()}
-        </td>
-      </tr>
-    </table>
+  ${viewCredentialsButton()}
 
-    <p style="margin-top:16px;font-size:13px;color:#64748b">
-      ⚠️ Do not share your credentials with anyone.
-    </p>
-  `;
+  <table width="100%" cellpadding="12"
+    style="margin-top:24px;
+           background:#f8fafc;
+           border-radius:12px">
+    ${rows}
+    <tr>
+      <td><strong>Expires</strong></td>
+      <td style="color:#4f46e5;font-weight:700">
+        ${credentials.expiresAt.toDateString()}
+      </td>
+    </tr>
+  </table>
+
+  <p style="margin-top:16px;font-size:13px;color:#64748b">
+    ⚠️ Do not share your credentials with anyone.
+  </p>
+`;
+
 
   await sendEmail(
     email,
@@ -309,4 +312,21 @@ export async function sendPaymentVerificationEmail(params: {
     `Payment ${status} - Order #${orderId}`,
     emailTemplate(content)
   );
+}
+function viewCredentialsButton() {
+  return `
+    <div style="margin:28px 0;text-align:center">
+      <a href="https://members.iptvtop.live/credentials"
+         style="display:inline-block;
+                background:linear-gradient(135deg,#22c55e,#16a34a);
+                color:#ffffff;
+                padding:14px 34px;
+                border-radius:10px;
+                font-weight:700;
+                font-size:16px;
+                text-decoration:none">
+        🔑 View Your Credentials
+      </a>
+    </div>
+  `;
 }
