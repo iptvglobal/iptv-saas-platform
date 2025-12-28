@@ -3,6 +3,7 @@ import * as brevo from '@getbrevo/brevo';
 const apiKey = process.env.BREVO_API_KEY;
 const senderEmail = process.env.BREVO_SENDER_EMAIL;
 const senderName = process.env.BREVO_SENDER_NAME;
+const appUrl = process.env.APP_URL || 'https://iptv-saas-platform-production.up.railway.app';
 
 if (!apiKey || !senderEmail || !senderName) {
   console.warn('[Brevo] WARNING: Email credentials not configured (BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME). Email notifications will be disabled. Set these variables to enable email delivery.');
@@ -17,6 +18,91 @@ export interface SendEmailParams {
   subject: string;
   htmlContent: string;
   textContent?: string;
+}
+
+/**
+ * Modern email template wrapper with dashboard button
+ */
+function createEmailTemplate(content: string, showDashboardButton: boolean = true): string {
+  const dashboardButton = showDashboardButton ? `
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${appUrl}/dashboard" 
+         style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; 
+                font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+        Go to Dashboard
+      </a>
+    </div>
+  ` : '';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>IPTV Premium</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f7f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7f9fc; padding: 40px 20px;">
+        <tr>
+          <td align="center">
+            <!-- Email Container -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px 40px; text-align: center;">
+                  <div style="background-color: white; width: 56px; height: 56px; border-radius: 12px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="2" y="3" width="20" height="14" rx="2" stroke="#667eea" stroke-width="2"/>
+                      <path d="M2 7h20M8 21h8" stroke="#667eea" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">
+                    IPTV Premium
+                  </h1>
+                  <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
+                    Your gateway to unlimited entertainment
+                  </p>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 40px;">
+                  ${content}
+                </td>
+              </tr>
+              
+              <!-- Dashboard Button -->
+              ${dashboardButton ? `
+              <tr>
+                <td style="padding: 0 40px 40px;">
+                  ${dashboardButton}
+                </td>
+              </tr>
+              ` : ''}
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 24px 40px; text-align: center; border-top: 1px solid #e9ecef;">
+                  <p style="margin: 0 0 8px; color: #6c757d; font-size: 13px;">
+                    Need help? Contact our support team
+                  </p>
+                  <p style="margin: 0; color: #adb5bd; font-size: 12px;">
+                    © ${new Date().getFullYear()} IPTV Premium. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+              
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
 }
 
 /**
@@ -73,25 +159,39 @@ export async function testBrevoConnection(): Promise<boolean> {
  * Send OTP verification email
  */
 export async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
+  const content = `
+    <div style="text-align: center;">
+      <h2 style="margin: 0 0 16px; color: #1e293b; font-size: 28px; font-weight: 700;">
+        Verify Your Email
+      </h2>
+      <p style="margin: 0 0 32px; color: #64748b; font-size: 16px; line-height: 1.6;">
+        Thank you for signing up! Please use the verification code below to complete your registration.
+      </p>
+    </div>
+    
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
+                border-radius: 12px; padding: 32px; text-align: center; margin: 24px 0;">
+      <div style="font-size: 42px; font-weight: 700; letter-spacing: 8px; color: #667eea; 
+                  font-family: 'Courier New', monospace;">
+        ${otp}
+      </div>
+      <p style="margin: 16px 0 0; color: #6c757d; font-size: 14px;">
+        This code expires in <strong>10 minutes</strong>
+      </p>
+    </div>
+    
+    <div style="margin-top: 32px; padding: 16px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+      <p style="margin: 0; color: #856404; font-size: 14px;">
+        <strong>Security tip:</strong> If you didn't request this code, please ignore this email.
+      </p>
+    </div>
+  `;
+
   return sendEmail({
     to: email,
     subject: 'Verify Your Email - IPTV Premium',
-    htmlContent: `
-      <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">Verify Your Email</h2>
-          <p>Thank you for signing up! Please use the following code to verify your email address:</p>
-          <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-            ${otp}
-          </div>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you didn't request this code, please ignore this email.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #888; font-size: 12px;">IPTV Premium - Premium IPTV Service</p>
-        </body>
-      </html>
-    `,
-    textContent: `Verify Your Email\n\nYour verification code is: ${otp}\n\nThis code will expire in 10 minutes.`
+    htmlContent: createEmailTemplate(content, false),
+    textContent: `Verify Your Email\n\nYour verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nGo to dashboard: ${appUrl}/dashboard`
   });
 }
 
@@ -108,44 +208,63 @@ export async function sendOrderConfirmationEmail(params: {
   paymentMethod: string;
 }): Promise<boolean> {
   const { to, userName, orderId, planName, connections, price, paymentMethod } = params;
+  
+  const content = `
+    <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;">
+      Order Confirmed! 🎉
+    </h2>
+    <p style="margin: 0 0 24px; color: #64748b; font-size: 16px;">
+      Hi <strong>${userName}</strong>, thank you for your order!
+    </p>
+    
+    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;">
+      <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+        <tr>
+          <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Order ID</td>
+          <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+            #${orderId}
+          </td>
+        </tr>
+        <tr style="border-top: 1px solid #e9ecef;">
+          <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Plan</td>
+          <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+            ${planName}
+          </td>
+        </tr>
+        <tr style="border-top: 1px solid #e9ecef;">
+          <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Connections</td>
+          <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+            ${connections}
+          </td>
+        </tr>
+        <tr style="border-top: 1px solid #e9ecef;">
+          <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Payment Method</td>
+          <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+            ${paymentMethod}
+          </td>
+        </tr>
+        <tr style="border-top: 2px solid #667eea;">
+          <td style="color: #1e293b; font-size: 16px; font-weight: 700; padding: 12px 0;">Total</td>
+          <td style="color: #667eea; font-size: 20px; font-weight: 700; text-align: right; padding: 12px 0;">
+            $${price}
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+    <div style="background-color: #e7f3ff; border-left: 4px solid #0d6efd; border-radius: 4px; padding: 16px; margin-top: 24px;">
+      <p style="margin: 0; color: #084298; font-size: 14px; line-height: 1.6;">
+        <strong>What's next?</strong><br>
+        Your order is pending verification. We'll notify you once it's approved and your credentials are ready!
+      </p>
+    </div>
+  `;
+
   return sendEmail({
     to,
     toName: userName,
     subject: `Order Confirmation #${orderId} - IPTV Premium`,
-    htmlContent: `
-      <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">Order Confirmation</h2>
-          <p>Hi ${userName},</p>
-          <p>Thank you for your order! Here are your order details:</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Order ID</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">#${orderId}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Plan</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${planName}</td>
-            </tr>
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Connections</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${connections}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Payment Method</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${paymentMethod}</td>
-            </tr>
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Total</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>$${price}</strong></td>
-            </tr>
-          </table>
-          <p>Your order is now pending verification. We'll notify you once it's approved.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #888; font-size: 12px;">IPTV Premium - Premium IPTV Service</p>
-        </body>
-      </html>
-    `
+    htmlContent: createEmailTemplate(content, true)
   });
 }
 
@@ -166,47 +285,110 @@ export async function sendCredentialsEmail(
     expiresAt: Date;
   }
 ): Promise<boolean> {
-  let credentialsHtml = '';
+  let credentialsContent = '';
   
   if (credentials.type === 'xtream') {
-    credentialsHtml = `
-      <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Type</strong></td><td style="padding: 10px; border: 1px solid #ddd;">Xtream Codes</td></tr>
-      <tr style="background-color: #f4f4f4;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Server URL</strong></td><td style="padding: 10px; border: 1px solid #ddd;">${credentials.url}</td></tr>
-      <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Username</strong></td><td style="padding: 10px; border: 1px solid #ddd;">${credentials.username}</td></tr>
-      <tr style="background-color: #f4f4f4;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Password</strong></td><td style="padding: 10px; border: 1px solid #ddd;">${credentials.password}</td></tr>
+    credentialsContent = `
+      <tr>
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Type</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+          Xtream Codes
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Server URL</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;">
+          ${credentials.url}
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Username</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+          ${credentials.username}
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Password</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+          ${credentials.password}
+        </td>
+      </tr>
     `;
   } else if (credentials.type === 'm3u') {
-    credentialsHtml = `
-      <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Type</strong></td><td style="padding: 10px; border: 1px solid #ddd;">M3U Playlist</td></tr>
-      <tr style="background-color: #f4f4f4;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>M3U URL</strong></td><td style="padding: 10px; border: 1px solid #ddd; word-break: break-all;">${credentials.m3uUrl}</td></tr>
-      <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>EPG URL</strong></td><td style="padding: 10px; border: 1px solid #ddd; word-break: break-all;">${credentials.epgUrl || 'N/A'}</td></tr>
+    credentialsContent = `
+      <tr>
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Type</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+          M3U Playlist
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">M3U URL</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;">
+          ${credentials.m3uUrl}
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">EPG URL</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;">
+          ${credentials.epgUrl || 'N/A'}
+        </td>
+      </tr>
     `;
   } else if (credentials.type === 'portal') {
-    credentialsHtml = `
-      <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Type</strong></td><td style="padding: 10px; border: 1px solid #ddd;">Portal URL</td></tr>
-      <tr style="background-color: #f4f4f4;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Portal URL</strong></td><td style="padding: 10px; border: 1px solid #ddd;">${credentials.portalUrl}</td></tr>
-      <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>MAC Address</strong></td><td style="padding: 10px; border: 1px solid #ddd;">${credentials.macAddress}</td></tr>
+    credentialsContent = `
+      <tr>
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Type</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+          Portal URL
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Portal URL</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0; word-break: break-all;">
+          ${credentials.portalUrl}
+        </td>
+      </tr>
+      <tr style="border-top: 1px solid #e9ecef;">
+        <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">MAC Address</td>
+        <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+          ${credentials.macAddress}
+        </td>
+      </tr>
     `;
   }
+
+  const content = `
+    <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;">
+      Your IPTV Credentials 🔑
+    </h2>
+    <p style="margin: 0 0 24px; color: #64748b; font-size: 16px;">
+      Your order has been verified! Here are your access credentials:
+    </p>
+    
+    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;">
+      <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+        ${credentialsContent}
+        <tr style="border-top: 2px solid #667eea;">
+          <td style="color: #1e293b; font-size: 14px; font-weight: 700; padding: 12px 0;">Expires</td>
+          <td style="color: #667eea; font-size: 14px; font-weight: 700; text-align: right; padding: 12px 0;">
+            ${credentials.expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </td>
+        </tr>
+      </table>
+    </div>
+    
+    <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; padding: 16px; margin-top: 24px;">
+      <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+        <strong>⚠️ Important:</strong> Keep these credentials safe and do not share them with others. You can always find them in your dashboard.
+      </p>
+    </div>
+  `;
 
   return sendEmail({
     to: email,
     subject: 'Your IPTV Credentials - IPTV Premium',
-    htmlContent: `
-      <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">Your IPTV Credentials</h2>
-          <p>Your order has been verified! Here are your IPTV access credentials:</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            ${credentialsHtml}
-            <tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Expires</strong></td><td style="padding: 10px; border: 1px solid #ddd;">${credentials.expiresAt.toLocaleDateString()}</td></tr>
-          </table>
-          <p><strong>Important:</strong> Keep these credentials safe and do not share them with others.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #888; font-size: 12px;">IPTV Premium - Premium IPTV Service</p>
-        </body>
-      </html>
-    `
+    htmlContent: createEmailTemplate(content, true)
   });
 }
 
@@ -225,67 +407,115 @@ export async function sendPaymentVerificationEmail(params: {
   
   const isVerified = status === 'verified';
   const subject = isVerified 
-    ? `Payment Verified - Order #${orderId}` 
+    ? `Payment Verified ✓ - Order #${orderId}` 
     : `Payment Issue - Order #${orderId}`;
   
-  const htmlContent = isVerified
+  const content = isVerified
     ? `
-      <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #22c55e;">Payment Verified!</h2>
-          <p>Hi ${userName},</p>
-          <p>Great news! Your payment for Order #${orderId} has been verified.</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Order ID</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">#${orderId}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Plan</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${planName}</td>
-            </tr>
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;"><span style="color: #22c55e; font-weight: bold;">✓ Verified</span></td>
-            </tr>
-          </table>
-          <p>Your IPTV credentials will be sent to you shortly.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #888; font-size: 12px;">IPTV Premium - Premium IPTV Service</p>
-        </body>
-      </html>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                    border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;">
+          Payment Verified!
+        </h2>
+        <p style="margin: 0; color: #64748b; font-size: 16px;">
+          Hi <strong>${userName}</strong>, great news!
+        </p>
+      </div>
+      
+      <p style="margin: 0 0 24px; color: #64748b; font-size: 15px; line-height: 1.6;">
+        Your payment for Order #${orderId} has been successfully verified.
+      </p>
+      
+      <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;">
+        <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+          <tr>
+            <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Order ID</td>
+            <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+              #${orderId}
+            </td>
+          </tr>
+          <tr style="border-top: 1px solid #e9ecef;">
+            <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Plan</td>
+            <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+              ${planName}
+            </td>
+          </tr>
+          <tr style="border-top: 1px solid #e9ecef;">
+            <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Status</td>
+            <td style="color: #10b981; font-size: 14px; font-weight: 700; text-align: right; padding: 8px 0;">
+              ✓ Verified
+            </td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="background-color: #d1fae5; border-left: 4px solid #10b981; border-radius: 4px; padding: 16px; margin-top: 24px;">
+        <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6;">
+          <strong>What's next?</strong><br>
+          Your IPTV credentials will be sent to you shortly. Check your dashboard for updates!
+        </p>
+      </div>
     `
     : `
-      <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #ef4444;">Payment Issue</h2>
-          <p>Hi ${userName},</p>
-          <p>We're sorry, but there was an issue verifying your payment for Order #${orderId}.</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Order ID</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">#${orderId}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Plan</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${planName}</td>
-            </tr>
-            <tr style="background-color: #f4f4f4;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;"><span style="color: #ef4444; font-weight: bold;">✗ Rejected</span></td>
-            </tr>
-          </table>
-          <p>Please contact our support team for assistance or try placing a new order.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #888; font-size: 12px;">IPTV Premium - Premium IPTV Service</p>
-        </body>
-      </html>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+                    border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 24px; font-weight: 700;">
+          Payment Issue
+        </h2>
+        <p style="margin: 0; color: #64748b; font-size: 16px;">
+          Hi <strong>${userName}</strong>,
+        </p>
+      </div>
+      
+      <p style="margin: 0 0 24px; color: #64748b; font-size: 15px; line-height: 1.6;">
+        We're sorry, but there was an issue verifying your payment for Order #${orderId}.
+      </p>
+      
+      <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 24px 0;">
+        <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+          <tr>
+            <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Order ID</td>
+            <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+              #${orderId}
+            </td>
+          </tr>
+          <tr style="border-top: 1px solid #e9ecef;">
+            <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Plan</td>
+            <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">
+              ${planName}
+            </td>
+          </tr>
+          <tr style="border-top: 1px solid #e9ecef;">
+            <td style="color: #6c757d; font-size: 14px; padding: 8px 0;">Status</td>
+            <td style="color: #ef4444; font-size: 14px; font-weight: 700; text-align: right; padding: 8px 0;">
+              ✗ Rejected
+            </td>
+          </tr>
+        </table>
+      </div>
+      
+      <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; border-radius: 4px; padding: 16px; margin-top: 24px;">
+        <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+          <strong>Need help?</strong><br>
+          Please contact our support team for assistance or try placing a new order.
+        </p>
+      </div>
     `;
 
   return sendEmail({
     to,
     toName: userName,
     subject,
-    htmlContent,
+    htmlContent: createEmailTemplate(content, true),
   });
 }
