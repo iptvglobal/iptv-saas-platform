@@ -71,7 +71,7 @@ export default function Plans() {
             <div className="p-1.5 rounded-full bg-primary/10">
               <Tv className="h-4 w-4 text-primary" />
             </div>
-            <span>10,000+ Channels</span>
+            <span>40,000+ Channels</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <div className="p-1.5 rounded-full bg-primary/10">
