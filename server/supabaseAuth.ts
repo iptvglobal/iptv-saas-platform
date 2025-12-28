@@ -79,22 +79,33 @@ export async function signUpWithEmail(email: string, password: string, name?: st
  */
 export async function verifyOTP(email: string, otp: string) {
   try {
+    console.log('[Supabase Auth] Verifying OTP for:', email);
+    
     // Get user by email
     const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (listError) {
+      console.error('[Supabase Auth] Failed to list users:', listError.message);
       return { success: false, error: 'Failed to verify code' };
     }
 
     const user = users.users.find(u => u.email === email);
     
     if (!user) {
+      console.error('[Supabase Auth] User not found:', email);
       return { success: false, error: 'User not found' };
     }
 
     const metadata = user.user_metadata || {};
     const storedOtp = metadata.otp_code;
     const otpExpires = metadata.otp_expires;
+
+    console.log('[Supabase Auth] OTP check:', {
+      email,
+      hasStoredOtp: !!storedOtp,
+      hasExpiry: !!otpExpires,
+      expired: otpExpires ? Date.now() > otpExpires : 'N/A'
+    });
 
     if (!storedOtp || !otpExpires) {
       return { success: false, error: 'No verification code found. Please request a new one.' };
@@ -105,6 +116,7 @@ export async function verifyOTP(email: string, otp: string) {
     }
 
     if (storedOtp !== otp) {
+      console.error('[Supabase Auth] OTP mismatch. Expected:', storedOtp, 'Got:', otp);
       return { success: false, error: 'Invalid verification code' };
     }
 
@@ -127,6 +139,7 @@ export async function verifyOTP(email: string, otp: string) {
       return { success: false, error: 'Verification failed' };
     }
 
+    console.log('[Supabase Auth] Email verified successfully for:', email);
     return { success: true, message: 'Email verified successfully' };
   } catch (error: any) {
     console.error('[Supabase Auth] OTP verification exception:', error);
@@ -198,19 +211,24 @@ export async function resendOTP(email: string) {
  */
 export async function signInWithEmail(email: string, password: string) {
   try {
+    console.log('[Supabase Auth] Sign in attempt for:', email);
+    
     const { data, error } = await supabaseClient.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      console.error('[Supabase Auth] Sign in error:', error.message);
-      return { success: false, error: error.message };
+      console.error('[Supabase Auth] Sign in error:', error.message, error);
+      return { success: false, error: `Authentication failed: ${error.message}` };
     }
 
     if (!data.user || !data.session) {
-      return { success: false, error: 'Sign in failed' };
+      console.error('[Supabase Auth] No user or session returned');
+      return { success: false, error: 'Sign in failed - no session created' };
     }
+
+    console.log('[Supabase Auth] Sign in successful, checking verification status...');
 
     // Get the latest user data from admin API to check verification status
     const { data: { user: adminUser }, error: adminError } = await supabaseAdmin.auth.admin.getUserById(data.user.id);
@@ -226,14 +244,16 @@ export async function signInWithEmail(email: string, password: string) {
     // Check if email is verified - check both metadata and email_confirmed_at
     const isVerified = metadata.email_verified === true || userToCheck.email_confirmed_at !== null;
     
-    console.log('[Supabase Auth] Sign in attempt:', {
+    console.log('[Supabase Auth] Verification status:', {
       email: userToCheck.email,
       email_verified_metadata: metadata.email_verified,
       email_confirmed_at: userToCheck.email_confirmed_at,
-      isVerified
+      isVerified,
+      userId: userToCheck.id
     });
 
     if (!isVerified) {
+      console.warn('[Supabase Auth] Email not verified for:', email);
       return {
         success: false,
         error: 'Email not verified. Please check your email for the verification code.',
@@ -242,6 +262,7 @@ export async function signInWithEmail(email: string, password: string) {
       };
     }
 
+    console.log('[Supabase Auth] Sign in completed successfully for:', email);
     return {
       success: true,
       user: data.user,
@@ -250,7 +271,7 @@ export async function signInWithEmail(email: string, password: string) {
     };
   } catch (error: any) {
     console.error('[Supabase Auth] Sign in exception:', error);
-    return { success: false, error: error.message || 'Sign in failed' };
+    return { success: false, error: `Sign in failed: ${error.message || 'Unknown error'}` };
   }
 }
 
