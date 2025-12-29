@@ -5,7 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
-import { sendOrderConfirmationEmail, sendCredentialsEmail, sendPaymentVerificationEmail } from "./brevo";
+import { sendOrderConfirmationEmail, sendCredentialsEmail, sendPaymentVerificationEmail, sendNewChatMessageEmail } from "./brevo";
 
 // Admin procedure - only allows admin role
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -686,6 +686,39 @@ export const appRouter = router({
           senderRole: ctx.user.role,
           message: input.content,
         });
+
+        // --- NEW EMAIL NOTIFICATION LOGIC ---
+        try {
+            const senderName = ctx.user.name || 'Support';
+            const messagePreview = input.content.substring(0, 100) + (input.content.length > 100 ? '...' : '');
+
+            if (ctx.user.role === 'user') {
+                // User sent a message, notify admin/staff
+                const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+                if (adminEmail) {
+                    await sendNewChatMessageEmail({
+                        to: adminEmail,
+                        senderName: ctx.user.name || 'User',
+                        messagePreview: messagePreview,
+                    });
+                }
+            } else {
+                // Admin/Agent sent a message, notify the user
+                const user = await db.getUserById(conversation.userId);
+                if (user && user.email) {
+                    await sendNewChatMessageEmail({
+                        to: user.email,
+                        senderName: senderName,
+                        messagePreview: messagePreview,
+                    });
+                }
+            }
+        } catch (emailError) {
+            console.error('Failed to send new chat message email:', emailError);
+            // Do not block the chat message if email fails
+        }
+        // --- END NEW EMAIL NOTIFICATION LOGIC ---
+
         return { success: true, id };
       }),
   }),
