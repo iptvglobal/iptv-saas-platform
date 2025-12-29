@@ -1,4 +1,3 @@
-const ORDER_NUMBER_OFFSET = 29355;
 import UserLayout from "@/components/UserLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,7 @@ export default function Orders() {
               {getStatusIcon(order.status)}
             </div>
             <div>
-              <div className="font-semibold">Order #{order.id + ORDER_NUMBER_OFFSET}</div>
+              <div className="font-semibold">Order #{order.id}</div>
               <div className="text-sm text-muted-foreground mt-1">
                 {getPlanName(order.planId)} • {order.connections} {order.connections === 1 ? "connection" : "connections"}
               </div>
