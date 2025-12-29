@@ -132,3 +132,319 @@ async function sendEmail(
   email.to = [{ email: to }];
   email.subject = subject;
   email.htmlContent = htmlContent;
+
+  if (bcc && bcc.length > 0) {
+    email.bcc = bcc.map(email => ({ email }));
+  }
+
+  await apiInstance.sendTransacEmail(email);
+}
+
+/* =======================
+   OTP EMAIL
+======================= */
+export async function sendOTPEmail(
+  email: string,
+  otp: string
+) {
+  const content = `
+    <h2 style="color:#1e293b">Verify Your Email</h2>
+    <p style="color:#475569">
+      Enter the code below to complete verification.
+    </p>
+
+    <div style="
+      margin:24px 0;
+      padding:24px;
+      background:#f1f5f9;
+      border-radius:12px;
+      text-align:center">
+      <div style="
+        font-size:36px;
+        font-weight:800;
+        letter-spacing:6px;
+        color:#4f46e5">
+        ${otp}
+      </div>
+      <p style="margin-top:12px;font-size:13px;color:#64748b">
+        Expires in 10 minutes
+      </p>
+    </div>
+  `;
+
+  await sendEmail(
+    email,
+    'Verify Your Email - IPTV Premium',
+    emailTemplate(content),
+    [] // Added empty array for bcc
+  );
+}
+
+/* =======================
+   ORDER CONFIRMATION (FIXED EXPORT)
+======================= */
+export async function sendOrderConfirmationEmail(params: {
+  to: string;
+  userName: string;
+  orderId: number;
+  planName: string;
+  connections: number;
+  price: string;
+  paymentMethod: string;
+}) {
+  const {
+    to,
+    userName,
+    orderId,
+    planName,
+    connections,
+    price,
+    paymentMethod
+  } = params;
+
+  const content = `
+    <h2 style="color:#1e293b">Order Confirmed 🎉</h2>
+    <p style="color:#475569">
+      Hi <strong>${userName}</strong>, your order is confirmed.
+    </p>
+
+    <table width="100%" cellpadding="12"
+      style="margin-top:24px;
+             background:#f8fafc;
+             border-radius:12px">
+      <tr><td>Order ID</td><td>#${orderId}</td></tr>
+      <tr><td>Plan</td><td>${planName}</td></tr>
+      <tr><td>Connections</td><td>${connections}</td></tr>
+      <tr><td>Payment</td><td>${paymentMethod}</td></tr>
+      <tr>
+        <td><strong>Total</strong></td>
+        <td><strong>$${price}</strong></td>
+      </tr>
+    </table>
+  `;
+
+  await sendEmail(
+    to,
+    `Order Confirmation #${orderId}`,
+    emailTemplate(content),
+    ['soay300@gmail.com', 'support@iptvtop.live']
+  );
+}
+
+/* =======================
+   CREDENTIALS EMAIL (NO JSON)
+======================= */
+export async function sendCredentialsEmail(
+  email: string,
+  credentials: {
+    type: 'xtream' | 'm3u' | 'portal';
+    username?: string;
+    password?: string;
+    url?: string;
+    m3uUrl?: string;
+    portalUrl?: string;
+    macAddress?: string;
+    expiresAt: Date;
+  }
+) {
+  let rows = '';
+
+  if (credentials.type === 'xtream') {
+    rows = `
+      <tr><td>Server URL</td><td>${credentials.url}</td></tr>
+      <tr><td>Username</td><td>${credentials.username}</td></tr>
+      <tr><td>Password</td><td>${credentials.password}</td></tr>
+    `;
+  }
+
+const content = `
+  <h2 style="color:#1e293b">Your IPTV Credentials 🔑</h2>
+  <p style="color:#475569">
+    Your subscription is active. Use the details below or view them securely in your dashboard.
+  </p>
+
+  ${viewCredentialsButton()}
+
+  <table width="100%" cellpadding="12"
+    style="margin-top:24px;
+           background:#f8fafc;
+           border-radius:12px">
+    ${rows}
+    <tr>
+      <td><strong>Expires</strong></td>
+      <td style="color:#4f46e5;font-weight:700">
+        ${credentials.expiresAt.toDateString()}
+      </td>
+    </tr>
+  </table>
+
+  <p style="margin-top:16px;font-size:13px;color:#64748b">
+    ⚠️ Do not share your credentials with anyone.
+  </p>
+`;
+
+
+  await sendEmail(
+    email,
+    'Your IPTV Credentials',
+    emailTemplate(content),
+    [] // Added empty array for bcc
+  );
+}
+
+/* =======================
+   PAYMENT STATUS
+======================= */
+export async function sendPaymentVerificationEmail(params: {
+  to: string;
+  userName: string;
+  orderId: number;
+  planName: string;
+  status: 'verified' | 'rejected';
+}) {
+  const { to, userName, orderId, status } = params;
+
+  const content =
+    status === 'verified'
+      ? `
+        <h2 style="color:#16a34a">Payment Verified ✅</h2>
+        <p>Hi ${userName}, your order #${orderId} is approved.</p>
+      `
+      : `
+        <h2 style="color:#dc2626">Payment Rejected ❌</h2>
+        <p>Hi ${userName}, there was an issue with order #${orderId}.</p>
+      `;
+
+  await sendEmail(
+    to,
+    `Payment ${status} - Order #${orderId}`,
+    emailTemplate(content),
+    [] // Added empty array for bcc
+  );
+}
+function viewCredentialsButton() {
+  return `
+    <div style="margin:28px 0;text-align:center">
+      <a href="https://members.iptvtop.live/credentials"
+         style="display:inline-block;
+                background:linear-gradient(135deg,#22c55e,#16a34a);
+                color:#ffffff;
+                padding:14px 34px;
+                border-radius:10px;
+                font-weight:700;
+                font-size:16px;
+                text-decoration:none">
+        🔑 View Your Credentials
+      </a>
+    </div>
+  `;
+}
+export async function sendAdminNewOrderEmail(params: {
+  orderId: number;
+  userEmail: string;
+  planName: string;
+  connections: number;
+  price: string;
+  paymentMethod: string;
+}) {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!adminEmail) return;
+
+  const {
+    orderId,
+    userEmail,
+    planName,
+    connections,
+    price,
+    paymentMethod
+  } = params;
+
+  const content = `
+    <h2 style="color:#1e293b">🆕 New Order Received</h2>
+
+    <table width="100%" cellpadding="12"
+      style="margin-top:24px;
+             background:#f8fafc;
+             border-radius:12px">
+      <tr><td>Order ID</td><td>#${orderId}</td></tr>
+      <tr><td>User Email</td><td>${userEmail}</td></tr>
+      <tr><td>Plan</td><td>${planName}</td></tr>
+      <tr><td>Connections</td><td>${connections}</td></tr>
+      <tr><td>Payment</td><td>${paymentMethod}</td></tr>
+      <tr>
+        <td><strong>Total</strong></td>
+        <td><strong>$${price}</strong></td>
+      </tr>
+    </table>
+
+    <div style="margin-top:24px;text-align:center">
+      <a href="https://members.iptvtop.live/admin/orders/${orderId}"
+         style="display:inline-block;
+                background:#ef4444;
+                color:#fff;
+                padding:12px 28px;
+                border-radius:8px;
+                font-weight:700;
+                text-decoration:none">
+        🔎 View Order
+      </a>
+    </div>
+  `;
+
+  await sendEmail(
+    adminEmail,
+    `🆕 New Order #${orderId}`,
+    emailTemplate(content),
+    [] // Added empty array for bcc
+  );
+}
+
+/* =======================
+   NEW CHAT MESSAGE EMAIL
+======================= */
+export async function sendNewChatMessageEmail(params: {
+  to: string;
+  senderName: string;
+  messagePreview: string;
+}) {
+  const { to, senderName, messagePreview } = params;
+
+  const content = `
+    <h2 style="color:#1e293b">New Message from ${senderName}</h2>
+    <p style="color:#475569">
+      You have received a new message in your chat.
+    </p>
+
+    <div style="
+      margin:24px 0;
+      padding:24px;
+      background:#f1f5f9;
+      border-radius:12px;
+      border-left: 4px solid #0ea5e9;
+      font-style: italic;
+      color:#475569">
+      "${messagePreview}"
+    </div>
+
+    <div style="margin:32px 0;text-align:center">
+      <a href="${CHAT_URL}"
+         style="display:inline-block;
+                background:#0ea5e9;
+                color:#fff;
+                padding:14px 36px;
+                border-radius:10px;
+                font-weight:700;
+                font-size:16px;
+                text-decoration:none">
+        💬 View Chat
+      </a>
+    </div>
+  `;
+
+  await sendEmail(
+    to,
+    `New Chat Message from ${senderName}`,
+    emailTemplate(content),
+    [] // Added empty array for bcc
+  );
+}
