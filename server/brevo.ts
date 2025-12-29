@@ -121,11 +121,7 @@ function emailTemplate(content: string) {
 /* =======================
    SEND EMAIL CORE
 ======================= */
-async function sendEmail(
-  to: string,
-  subject: string,
-  htmlContent: string
-) {
+async function sendEmail(to: string, subject: string, htmlContent: string) {
   const email = new brevo.SendSmtpEmail();
   email.sender = { email: senderEmail, name: senderName };
   email.to = [{ email: to }];
@@ -138,44 +134,18 @@ async function sendEmail(
 /* =======================
    OTP EMAIL
 ======================= */
-export async function sendOTPEmail(
-  email: string,
-  otp: string
-) {
+export async function sendOTPEmail(email: string, otp: string) {
   const content = `
-    <h2 style="color:#1e293b">Verify Your Email</h2>
-    <p style="color:#475569">
-      Enter the code below to complete verification.
-    </p>
-
-    <div style="
-      margin:24px 0;
-      padding:24px;
-      background:#f1f5f9;
-      border-radius:12px;
-      text-align:center">
-      <div style="
-        font-size:36px;
-        font-weight:800;
-        letter-spacing:6px;
-        color:#4f46e5">
-        ${otp}
-      </div>
-      <p style="margin-top:12px;font-size:13px;color:#64748b">
-        Expires in 10 minutes
-      </p>
-    </div>
+    <h2>Verify Your Email</h2>
+    <p>Use the code below:</p>
+    <div style="font-size:36px;font-weight:800">${otp}</div>
   `;
 
-  await sendEmail(
-    email,
-    'Verify Your Email - IPTV Premium',
-    emailTemplate(content)
-  );
+  await sendEmail(email, 'Verify Your Email', emailTemplate(content));
 }
 
 /* =======================
-   ORDER CONFIRMATION (FIXED EXPORT)
+   ORDER CONFIRMATION
 ======================= */
 export async function sendOrderConfirmationEmail(params: {
   to: string;
@@ -186,150 +156,23 @@ export async function sendOrderConfirmationEmail(params: {
   price: string;
   paymentMethod: string;
 }) {
-  const {
-    to,
-    userName,
-    orderId,
-    planName,
-    connections,
-    price,
-    paymentMethod
-  } = params;
+  const { to, userName, orderId, planName, connections, price, paymentMethod } = params;
 
   const content = `
-    <h2 style="color:#1e293b">Order Confirmed 🎉</h2>
-    <p style="color:#475569">
-      Hi <strong>${userName}</strong>, your order is confirmed.
-    </p>
-
-    <table width="100%" cellpadding="12"
-      style="margin-top:24px;
-             background:#f8fafc;
-             border-radius:12px">
-      <tr><td>Order ID</td><td>#${orderId}</td></tr>
-      <tr><td>Plan</td><td>${planName}</td></tr>
-      <tr><td>Connections</td><td>${connections}</td></tr>
-      <tr><td>Payment</td><td>${paymentMethod}</td></tr>
-      <tr>
-        <td><strong>Total</strong></td>
-        <td><strong>$${price}</strong></td>
-      </tr>
-    </table>
+    <h2>Order Confirmed 🎉</h2>
+    <p>Hi ${userName}, your order is confirmed.</p>
+    <p><b>Order:</b> #${orderId}</p>
+    <p><b>Plan:</b> ${planName}</p>
+    <p><b>Connections:</b> ${connections}</p>
+    <p><b>Total:</b> $${price}</p>
   `;
 
-  await sendEmail(
-    to,
-    `Order Confirmation #${orderId}`,
-    emailTemplate(content)
-  );
+  await sendEmail(to, `Order Confirmation #${orderId}`, emailTemplate(content));
 }
 
 /* =======================
-   CREDENTIALS EMAIL (NO JSON)
+   ADMIN NEW ORDER (FIXED)
 ======================= */
-export async function sendCredentialsEmail(
-  email: string,
-  credentials: {
-    type: 'xtream' | 'm3u' | 'portal';
-    username?: string;
-    password?: string;
-    url?: string;
-    m3uUrl?: string;
-    portalUrl?: string;
-    macAddress?: string;
-    expiresAt: Date;
-  }
-) {
-  let rows = '';
-
-  if (credentials.type === 'xtream') {
-    rows = `
-      <tr><td>Server URL</td><td>${credentials.url}</td></tr>
-      <tr><td>Username</td><td>${credentials.username}</td></tr>
-      <tr><td>Password</td><td>${credentials.password}</td></tr>
-    `;
-  }
-
-const content = `
-  <h2 style="color:#1e293b">Your IPTV Credentials 🔑</h2>
-  <p style="color:#475569">
-    Your subscription is active. Use the details below or view them securely in your dashboard.
-  </p>
-
-  ${viewCredentialsButton()}
-
-  <table width="100%" cellpadding="12"
-    style="margin-top:24px;
-           background:#f8fafc;
-           border-radius:12px">
-    ${rows}
-    <tr>
-      <td><strong>Expires</strong></td>
-      <td style="color:#4f46e5;font-weight:700">
-        ${credentials.expiresAt.toDateString()}
-      </td>
-    </tr>
-  </table>
-
-  <p style="margin-top:16px;font-size:13px;color:#64748b">
-    ⚠️ Do not share your credentials with anyone.
-  </p>
-`;
-
-
-  await sendEmail(
-    email,
-    'Your IPTV Credentials',
-    emailTemplate(content)
-  );
-}
-
-/* =======================
-   PAYMENT STATUS
-======================= */
-export async function sendPaymentVerificationEmail(params: {
-  to: string;
-  userName: string;
-  orderId: number;
-  planName: string;
-  status: 'verified' | 'rejected';
-}) {
-  const { to, userName, orderId, status } = params;
-
-  const content =
-    status === 'verified'
-      ? `
-        <h2 style="color:#16a34a">Payment Verified ✅</h2>
-        <p>Hi ${userName}, your order #${orderId} is approved.</p>
-      `
-      : `
-        <h2 style="color:#dc2626">Payment Rejected ❌</h2>
-        <p>Hi ${userName}, there was an issue with order #${orderId}.</p>
-      `;
-
-  await sendEmail(
-    to,
-    `Payment ${status} - Order #${orderId}`,
-    emailTemplate(content)
-  );
-}
-function viewCredentialsButton() {
-  return `
-    <div style="margin:28px 0;text-align:center">
-      <a href="https://members.iptvtop.live/credentials"
-         style="display:inline-block;
-                background:linear-gradient(135deg,#22c55e,#16a34a);
-                color:#ffffff;
-                padding:14px 34px;
-                border-radius:10px;
-                font-weight:700;
-                font-size:16px;
-                text-decoration:none">
-        🔑 View Your Credentials
-      </a>
-    </div>
-  `;
-}
 export async function sendAdminNewOrderEmail(params: {
   orderId: number;
   userEmail: string;
@@ -338,53 +181,31 @@ export async function sendAdminNewOrderEmail(params: {
   price: string;
   paymentMethod: string;
 }) {
-  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
-  if (!adminEmail) return;
+  const ADMIN_EMAILS = [
+    { email: 'support@iptvtop.live' },
+    { email: 'soay300@gmail.com' }
+  ];
 
-  const {
-    orderId,
-    userEmail,
-    planName,
-    connections,
-    price,
-    paymentMethod
-  } = params;
+  const { orderId, userEmail, planName, connections, price, paymentMethod } = params;
 
   const content = `
-    <h2 style="color:#1e293b">🆕 New Order Received</h2>
+    <h2>🆕 New Order Received</h2>
+    <p><b>Order:</b> #${orderId}</p>
+    <p><b>User:</b> ${userEmail}</p>
+    <p><b>Plan:</b> ${planName}</p>
+    <p><b>Connections:</b> ${connections}</p>
+    <p><b>Total:</b> $${price}</p>
 
-    <table width="100%" cellpadding="12"
-      style="margin-top:24px;
-             background:#f8fafc;
-             border-radius:12px">
-      <tr><td>Order ID</td><td>#${orderId}</td></tr>
-      <tr><td>User Email</td><td>${userEmail}</td></tr>
-      <tr><td>Plan</td><td>${planName}</td></tr>
-      <tr><td>Connections</td><td>${connections}</td></tr>
-      <tr><td>Payment</td><td>${paymentMethod}</td></tr>
-      <tr>
-        <td><strong>Total</strong></td>
-        <td><strong>$${price}</strong></td>
-      </tr>
-    </table>
-
-    <div style="margin-top:24px;text-align:center">
-      <a href="https://members.iptvtop.live/admin/orders/${orderId}"
-         style="display:inline-block;
-                background:#ef4444;
-                color:#fff;
-                padding:12px 28px;
-                border-radius:8px;
-                font-weight:700;
-                text-decoration:none">
-        🔎 View Order
-      </a>
-    </div>
+    <a href="${BASE_URL}/admin/orders/${orderId}">
+      🔎 View Order
+    </a>
   `;
 
-  await sendEmail(
-    adminEmail,
-    `🆕 New Order #${orderId}`,
-    emailTemplate(content)
-  );
+  const email = new brevo.SendSmtpEmail();
+  email.sender = { email: senderEmail, name: senderName };
+  email.to = ADMIN_EMAILS;
+  email.subject = `🆕 New Order #${orderId}`;
+  email.htmlContent = emailTemplate(content);
+
+  await apiInstance.sendTransacEmail(email);
 }
