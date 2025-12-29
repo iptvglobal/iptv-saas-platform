@@ -168,9 +168,9 @@ export async function resendOTP(email: string) {
       return { success: false, error: 'User not found' };
     }
 
-    // Check if already verified
+    // Check if already verified - ONLY check our custom metadata flag
     const metadata = user.user_metadata || {};
-    if (metadata.email_verified || user.email_confirmed_at) {
+    if (metadata.email_verified === true) {
       return { success: false, error: 'Email already verified' };
     }
 
@@ -244,8 +244,9 @@ export async function signInWithEmail(email: string, password: string) {
     const userToCheck = adminUser || data.user;
     const metadata = userToCheck.user_metadata || {};
     
-    // Check if email is verified - check both metadata and email_confirmed_at
-    const isVerified = metadata.email_verified === true || userToCheck.email_confirmed_at !== null;
+    // Check if email is verified - ONLY check our custom metadata flag
+    // Do NOT rely on Supabase's email_confirmed_at as it may be auto-set
+    const isVerified = metadata.email_verified === true;
     
     console.log('[Supabase Auth] Verification status:', {
       email: userToCheck.email,
