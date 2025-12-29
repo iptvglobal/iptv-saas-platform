@@ -318,16 +318,47 @@ export async function getUserFromToken(token: string) {
  */
 export async function requestPasswordReset(email: string) {
   try {
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+    const appUrl = process.env.APP_URL || 'https://iptv-saas-platform-production.up.railway.app';
+    
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: `${appUrl}/reset-password`
+      }
+    );
     
     if (error) {
       console.error('[Supabase Auth] Password reset error:', error.message);
       return { success: false, error: error.message };
     }
 
-    return { success: true, message: 'Password reset email sent' };
+    console.log('[Supabase Auth] Password reset email sent to:', email);
+    return { success: true, message: 'Password reset email sent to your email address' };
   } catch (error: any) {
     console.error('[Supabase Auth] Password reset exception:', error);
     return { success: false, error: error.message || 'Password reset failed' };
+  }
+}
+
+/**
+ * Update password with new password
+ */
+export async function updatePassword(newPassword: string, accessToken: string) {
+  try {
+    const { data, error } = await supabaseClient.auth.updateUser(
+      { password: newPassword },
+      { accessToken }
+    );
+
+    if (error) {
+      console.error('[Supabase Auth] Update password error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    console.log('[Supabase Auth] Password updated successfully');
+    return { success: true, message: 'Password updated successfully' };
+  } catch (error: any) {
+    console.error('[Supabase Auth] Update password exception:', error);
+    return { success: false, error: error.message || 'Password update failed' };
   }
 }
