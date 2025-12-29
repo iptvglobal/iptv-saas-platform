@@ -322,7 +322,7 @@ export default function Checkout() {
               
               <p className="text-xs text-center text-muted-foreground">
                 Click "I Have Paid" after completing your payment. 
-                Our team will verify your payment within 24 hours.
+                Our team will verify your payment within 1-2 hours.
               </p>
             </div>
           </DialogContent>
