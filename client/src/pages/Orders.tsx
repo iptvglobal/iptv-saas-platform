@@ -18,7 +18,8 @@ import {
 export default function Orders() {
   const { data: orders, isLoading } = trpc.orders.myOrders.useQuery();
   const { data: plans } = trpc.plans.list.useQuery();
-  
+  const ORDER_NUMBER_OFFSET = 29355;
+
   const pendingOrders = orders?.filter(o => o.status === "pending") || [];
   const verifiedOrders = orders?.filter(o => o.status === "verified") || [];
   const rejectedOrders = orders?.filter(o => o.status === "rejected") || [];
@@ -62,7 +63,9 @@ export default function Orders() {
               {getStatusIcon(order.status)}
             </div>
             <div>
-              <div className="font-semibold">Order #{order.id}</div>
+              <div className="font-semibold">
+  Order #{order.id + ORDER_NUMBER_OFFSET}
+</div>
               <div className="text-sm text-muted-foreground mt-1">
                 {getPlanName(order.planId)} • {order.connections} {order.connections === 1 ? "connection" : "connections"}
               </div>
