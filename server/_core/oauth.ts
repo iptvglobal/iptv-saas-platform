@@ -9,7 +9,9 @@ import {
   verifyOTP, 
   resendOTP,
   signOut as supabaseSignOut,
-  getUserFromToken 
+  getUserFromToken,
+  requestPasswordReset,
+  updatePassword
 } from "../supabaseAuth";
 
 function getQueryParam(req: Request, key: string): string | undefined {
@@ -151,6 +153,59 @@ export function registerOAuthRoutes(app: Express) {
     } catch (error) {
       console.error("[Auth] Resend OTP failed", error);
       res.status(500).json({ error: "Failed to resend verification code" });
+    }
+  });
+
+  // Forgot Password
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({ error: "Email is required" });
+        return;
+      }
+
+      const result = await requestPasswordReset(email);
+
+      if (!result.success) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
+
+      res.json({ success: true, message: result.message });
+    } catch (error) {
+      console.error("[Auth] Forgot password failed", error);
+      res.status(500).json({ error: "Failed to send reset email" });
+    }
+  });
+
+  // Reset Password
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { password, accessToken } = req.body;
+
+      if (!password || !accessToken) {
+        res.status(400).json({ error: "Password and access token are required" });
+        return;
+      }
+
+      if (password.length < 6) {
+        res.status(400).json({ error: "Password must be at least 6 characters" });
+        return;
+      }
+
+      const result = await updatePassword(password, accessToken);
+
+      if (!result.success) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
+
+      res.json({ success: true, message: result.message });
+    } catch (error) {
+      console.error("[Auth] Reset password failed", error);
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
 
