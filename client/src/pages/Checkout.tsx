@@ -19,7 +19,6 @@ import {
   Copy,
   Bitcoin
 } from "lucide-react";
-const ORDER_NUMBER_OFFSET = 29355;
 export default function Checkout() {
   const [, params] = useRoute("/checkout/:planId");
   const [location, setLocation] = useLocation();
@@ -300,9 +299,8 @@ export default function Checkout() {
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
                 <span className="text-sm text-muted-foreground">Order ID</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium">
-  #{orderId ? orderId + ORDER_NUMBER_OFFSET : ""}
-</span>
+<span className="font-mono font-medium">#{orderId}</span>
+
 
                   <Button 
                     variant="ghost" 
