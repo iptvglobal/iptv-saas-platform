@@ -11,7 +11,9 @@ import {
   signOut as supabaseSignOut,
   getUserFromToken,
   requestPasswordReset,
-  updatePassword
+  updatePassword,
+  requestPasswordResetOTP,
+  resetPasswordWithOTP
 } from "../supabaseAuth";
 
 function getQueryParam(req: Request, key: string): string | undefined {
@@ -205,6 +207,46 @@ export function registerOAuthRoutes(app: Express) {
       res.json({ success: true, message: result.message });
     } catch (error) {
       console.error("[Auth] Reset password failed", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  // Forgot Password with OTP
+  app.post("/api/auth/forgot-password-otp", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        res.status(400).json({ error: "Email is required" });
+        return;
+      }
+      const result = await requestPasswordResetOTP(email);
+      if (!result.success) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
+      res.json({ success: true, message: result.message });
+    } catch (error) {
+      console.error("[Auth] Forgot password OTP failed", error);
+      res.status(500).json({ error: "Failed to send reset code" });
+    }
+  });
+
+  // Reset Password with OTP
+  app.post("/api/auth/reset-password-otp", async (req: Request, res: Response) => {
+    try {
+      const { email, otp, password } = req.body;
+      if (!email || !otp || !password) {
+        res.status(400).json({ error: "Email, code, and new password are required" });
+        return;
+      }
+      const result = await resetPasswordWithOTP(email, otp, password);
+      if (!result.success) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
+      res.json({ success: true, message: result.message });
+    } catch (error) {
+      console.error("[Auth] Reset password OTP failed", error);
       res.status(500).json({ error: "Failed to reset password" });
     }
   });

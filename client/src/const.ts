@@ -10,5 +10,7 @@ export const AUTH_ENDPOINTS = {
   signOut: "/api/auth/signout",
   verifyOTP: "/api/auth/verify-otp",
   resendOTP: "/api/auth/resend-otp",
+  forgotPasswordOTP: "/api/auth/forgot-password-otp",
+  resetPasswordOTP: "/api/auth/reset-password-otp",
   me: "/api/auth/me",
 } as const;

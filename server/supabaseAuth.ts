@@ -362,3 +362,112 @@ export async function updatePassword(newPassword: string, accessToken: string) {
     return { success: false, error: error.message || 'Password update failed' };
   }
 }
+
+/**
+ * Request password reset with OTP
+ */
+export async function requestPasswordResetOTP(email: string) {
+  try {
+    // Get user by email
+    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (listError) {
+      return { success: false, error: 'Failed to process request' };
+    }
+
+    const user = users.users.find(u => u.email === email);
+    
+    if (!user) {
+      // For security, don't reveal if user exists
+      return { success: true, message: 'If an account exists, a reset code has been sent' };
+    }
+
+    // Generate OTP code (6 digits)
+    const otp = generateOTP();
+    
+    // Store OTP in user metadata
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      {
+        user_metadata: {
+          ...user.user_metadata,
+          reset_otp_code: otp,
+          reset_otp_expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        }
+      }
+    );
+
+    if (updateError) {
+      console.error('[Supabase Auth] Failed to store reset OTP:', updateError.message);
+      return { success: false, error: 'Failed to generate reset code' };
+    }
+
+    // Send OTP via Brevo
+    try {
+      await sendOTPEmail(email, otp); // We can reuse sendOTPEmail or create a specific one
+    } catch (emailError) {
+      console.error('[Supabase Auth] Failed to send reset OTP email:', emailError);
+      return { success: false, error: 'Failed to send reset email' };
+    }
+
+    return { success: true, message: 'Reset code sent to your email' };
+  } catch (error: any) {
+    console.error('[Supabase Auth] Reset OTP request exception:', error);
+    return { success: false, error: error.message || 'Request failed' };
+  }
+}
+
+/**
+ * Reset password using OTP code
+ */
+export async function resetPasswordWithOTP(email: string, otp: string, newPassword: string) {
+  try {
+    // Get user by email
+    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (listError) {
+      return { success: false, error: 'Failed to verify code' };
+    }
+
+    const user = users.users.find(u => u.email === email);
+    
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const metadata = user.user_metadata || {};
+    const storedOtp = metadata.reset_otp_code;
+    const otpExpires = metadata.reset_otp_expires;
+
+    if (!storedOtp || !otpExpires || storedOtp !== otp) {
+      return { success: false, error: 'Invalid or expired reset code' };
+    }
+
+    if (Date.now() > otpExpires) {
+      return { success: false, error: 'Reset code expired' };
+    }
+
+    // Update password and clear reset OTP
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      {
+        password: newPassword,
+        user_metadata: {
+          ...metadata,
+          reset_otp_code: null,
+          reset_otp_expires: null,
+        }
+      }
+    );
+
+    if (updateError) {
+      console.error('[Supabase Auth] Failed to reset password:', updateError.message);
+      return { success: false, error: 'Failed to update password' };
+    }
+
+    return { success: true, message: 'Password reset successfully' };
+  } catch (error: any) {
+    console.error('[Supabase Auth] Reset password exception:', error);
+    return { success: false, error: error.message || 'Reset failed' };
+  }
+}
