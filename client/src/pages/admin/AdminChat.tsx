@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
@@ -20,11 +20,20 @@ import {
 export default function AdminChat() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
-  const { data: conversations, isLoading } = trpc.chat.listConversations.useQuery();
+  const { data: conversations, isLoading } = trpc.chat.listConversations.useQuery(
+    undefined,
+    { refetchInterval: 5000 } // Refetch every 5 seconds to check for new messages
+  );
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Query to get unread counts for admin (messages from users)
+  const { data: unreadCounts } = trpc.chat.getAdminUnreadCounts.useQuery(
+    undefined,
+    { refetchInterval: 5000 }
+  );
   
   const { data: messages, isLoading: messagesLoading } = trpc.chat.getMessages.useQuery(
     { conversationId: selectedConversation! },
@@ -35,6 +44,7 @@ export default function AdminChat() {
     onSuccess: () => {
       utils.chat.getMessages.invalidate({ conversationId: selectedConversation! });
       utils.chat.listConversations.invalidate();
+      utils.chat.getAdminUnreadCounts.invalidate();
       setNewMessage("");
     },
     onError: (error) => {
@@ -48,12 +58,44 @@ export default function AdminChat() {
     const u = users?.find(u => u.id === userId);
     return u?.name || u?.email || `User #${userId}`;
   };
-  
-  const filteredConversations = conversations?.filter((c: { userId: number }) => {
-    if (!searchQuery) return true;
-    const userName = getUserName(c.userId);
-    return userName.toLowerCase().includes(searchQuery.toLowerCase());
-  }) || [];
+
+  // Invalidate unread counts when selecting a conversation (messages will be marked as read)
+  useEffect(() => {
+    if (selectedConversation && messages) {
+      // Small delay to allow the backend to mark messages as read
+      const timer = setTimeout(() => {
+        utils.chat.getAdminUnreadCounts.invalidate();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedConversation, messages, utils.chat.getAdminUnreadCounts]);
+
+  // Sort and filter conversations: unread first, then by lastMessageAt
+  const sortedAndFilteredConversations = useMemo(() => {
+    if (!conversations) return [];
+    
+    // First filter by search query
+    let filtered = conversations.filter((c: { userId: number }) => {
+      if (!searchQuery) return true;
+      const userName = getUserName(c.userId);
+      return userName.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+
+    // Then sort: unread first, then by updatedAt
+    return filtered.sort((a: { id: number; updatedAt: Date }, b: { id: number; updatedAt: Date }) => {
+      const aUnread = unreadCounts?.[a.id] || 0;
+      const bUnread = unreadCounts?.[b.id] || 0;
+      
+      // First sort by unread (conversations with unread messages first)
+      if (aUnread > 0 && bUnread === 0) return -1;
+      if (bUnread > 0 && aUnread === 0) return 1;
+      
+      // Then sort by updatedAt (most recent first)
+      const aTime = new Date(a.updatedAt).getTime();
+      const bTime = new Date(b.updatedAt).getTime();
+      return bTime - aTime;
+    });
+  }, [conversations, unreadCounts, searchQuery, users]);
   
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConversation) return;
@@ -113,41 +155,54 @@ export default function AdminChat() {
                       <div key={i} className="skeleton h-16 rounded-lg" />
                     ))}
                   </div>
-                ) : filteredConversations.length === 0 ? (
+                ) : sortedAndFilteredConversations.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No conversations</p>
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {filteredConversations.map((conv: { id: number; userId: number; lastMessageAt: Date | null; subject: string | null; status: string; updatedAt: Date }) => (
-                      <button
-                        key={conv.id}
-                        onClick={() => setSelectedConversation(conv.id)}
-                        className={`w-full p-4 text-left hover:bg-muted/50 transition-colors ${
-                          selectedConversation === conv.id ? 'bg-muted' : ''
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
-                            <User className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium truncate">
-                                {getUserName(conv.userId)}
-                              </span>
+                    {sortedAndFilteredConversations.map((conv: { id: number; userId: number; lastMessageAt: Date | null; subject: string | null; status: string; updatedAt: Date }) => {
+                      const unreadCount = unreadCounts?.[conv.id] || 0;
+                      const hasUnread = unreadCount > 0;
+                      
+                      return (
+                        <button
+                          key={conv.id}
+                          onClick={() => setSelectedConversation(conv.id)}
+                          className={`w-full p-4 text-left hover:bg-muted/50 transition-colors ${
+                            selectedConversation === conv.id ? 'bg-muted' : ''
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative">
+                              <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
+                                <User className="h-4 w-4 text-primary" />
+                              </div>
+                              {/* Red dot indicator for unread messages */}
+                              {hasUnread && (
+                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold">
+                                  {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                              )}
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {conv.subject || "Support conversation"}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(new Date(conv.updatedAt), "MMM d, h:mm a")}
-                            </p>
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center justify-between">
+                                <span className={`font-medium truncate ${hasUnread ? 'text-foreground font-semibold' : ''}`}>
+                                  {getUserName(conv.userId)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {conv.subject || "Support conversation"}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {format(new Date(conv.updatedAt), "MMM d, h:mm a")}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
