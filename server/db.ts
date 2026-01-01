@@ -431,16 +431,35 @@ export async function getMessagesByConversationId(conversationId: number) {
   return db.select().from(chatMessages).where(eq(chatMessages.conversationId, conversationId)).orderBy(asc(chatMessages.createdAt));
 }
 
-export async function markMessagesAsRead(conversationId: number, userId: number) {
+export async function markMessagesAsRead(conversationId: number, userId: number, userRole: string) {
   const db = await getDb();
   if (!db) return;
-  // Mark all messages in conversation as read (except user's own messages)
-  await db.update(chatMessages)
-    .set({ isRead: true })
-    .where(and(
-      eq(chatMessages.conversationId, conversationId),
-      eq(chatMessages.isRead, false)
-    ));
+  
+  // Mark messages as read based on who is viewing:
+  // - If user is viewing, mark messages from admin/agent as read
+  // - If admin/agent is viewing, mark messages from user as read
+  if (userRole === 'user') {
+    // User is viewing - mark staff messages as read
+    await db.update(chatMessages)
+      .set({ isRead: true })
+      .where(and(
+        eq(chatMessages.conversationId, conversationId),
+        eq(chatMessages.isRead, false),
+        or(
+          eq(chatMessages.senderRole, 'admin'),
+          eq(chatMessages.senderRole, 'agent')
+        )
+      ));
+  } else {
+    // Admin/Agent is viewing - mark user messages as read
+    await db.update(chatMessages)
+      .set({ isRead: true })
+      .where(and(
+        eq(chatMessages.conversationId, conversationId),
+        eq(chatMessages.isRead, false),
+        eq(chatMessages.senderRole, 'user')
+      ));
+  }
 }
 
 // Get unread message counts for a user (messages from staff in their conversations)
