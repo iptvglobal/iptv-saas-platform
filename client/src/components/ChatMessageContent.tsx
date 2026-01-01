@@ -5,40 +5,38 @@ interface ChatMessageContentProps {
   isUserMessage: boolean;
 }
 
-// Regex to find URLs: http(s)://... or www....
-// Updated Regex to include common TLDs and simplify the pattern for better matching
 const urlRegex = /(\b(https?:\/\/[^\s]+)|(\bwww\.[^\s]+))/ig;
 
 const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUserMessage }) => {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
 
-  // Use a manual loop to ensure all parts of the string are processed correctly
   const matches = [...content.matchAll(urlRegex)];
-  
+
   matches.forEach((match) => {
     const offset = match.index!;
     const fullMatch = match[0];
-    // Add the text before the link
+
     if (offset > lastIndex) {
       parts.push(content.substring(lastIndex, offset));
     }
 
-    // Determine the full URL for the href attribute
     let url = fullMatch;
-    if (!url.match(/^https?:\/\//i)) {
+    if (!/^https?:\/\//i.test(url)) {
       url = 'http://' + url;
     }
 
-    // Add the link component
     parts.push(
-      <a 
-        key={offset} 
-        href={url} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        // Use a light yellow/gold color for high contrast on the blue background
-className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-500'}`} style={{ textShadow: isUserMessage ? '0 0 2px rgba(0,0,0,0.5)' : 'none' }}
+      <a
+        key={offset}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`underline ${
+          isUserMessage
+            ? 'text-white hover:text-gray-200'
+            : 'text-blue-600 hover:text-blue-500'
+        }`}
       >
         {fullMatch}
       </a>
@@ -47,13 +45,16 @@ className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text
     lastIndex = offset + fullMatch.length;
   });
 
-  // Add the remaining text
   if (lastIndex < content.length) {
     parts.push(content.substring(lastIndex));
   }
 
   return (
-    <p className="text-sm whitespace-pre-wrap break-words">
+    <p
+      className={`text-sm whitespace-pre-wrap break-words ${
+        isUserMessage ? 'text-white' : 'text-gray-900'
+      }`}
+    >
       {parts.map((part, index) => (
         <React.Fragment key={index}>{part}</React.Fragment>
       ))}
