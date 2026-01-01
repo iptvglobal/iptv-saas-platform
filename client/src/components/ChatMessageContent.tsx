@@ -37,8 +37,8 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
         rel="noopener noreferrer"
         className={`underline ${
           isUserMessage
-            ? 'text-white hover:text-gray-200'
-            : 'text-black hover:text-gray-700'
+            ? 'text-black hover:text-gray-700'   // ANSWER
+            : 'text-white hover:text-gray-200'   // RESPONSE
         }`}
       >
         {fullMatch}
@@ -55,7 +55,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   return (
     <p
       className={`text-sm whitespace-pre-wrap break-words ${
-        isUserMessage ? 'text-white' : 'text-black'
+        isUserMessage ? 'text-black' : 'text-white'
       }`}
     >
       {parts.map((part, index) => (
