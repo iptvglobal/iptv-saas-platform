@@ -7,7 +7,10 @@ interface ChatMessageContentProps {
 
 const urlRegex = /(\b(https?:\/\/[^\s]+)|(\bwww\.[^\s]+))/ig;
 
-const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content }) => {
+const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
+  content,
+  isUserMessage,
+}) => {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
 
@@ -32,7 +35,11 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content }) => {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="underline text-white hover:text-gray-200"
+        className={`underline ${
+          isUserMessage
+            ? 'text-white hover:text-gray-200'
+            : 'text-black hover:text-gray-700'
+        }`}
       >
         {fullMatch}
       </a>
@@ -46,7 +53,11 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content }) => {
   }
 
   return (
-    <p className="text-sm whitespace-pre-wrap break-words text-white">
+    <p
+      className={`text-sm whitespace-pre-wrap break-words ${
+        isUserMessage ? 'text-white' : 'text-black'
+      }`}
+    >
       {parts.map((part, index) => (
         <React.Fragment key={index}>{part}</React.Fragment>
       ))}
