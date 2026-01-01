@@ -2,6 +2,7 @@ import UserLayout from "@/components/UserLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { trpc } from "@/lib/trpc";
@@ -9,6 +10,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import ChatMessageContent from "@/components/ChatMessageContent";
 import { 
   MessageCircle, 
   Send, 
@@ -316,15 +318,15 @@ export default function Chat() {
                                         isOwn 
                                           ? "bg-primary text-primary-foreground" 
                                           : "bg-muted"
-                                      }`}
-                                      style={{ 
-                                        wordWrap: 'break-word', 
-                                        overflowWrap: 'break-word',
-                                        wordBreak: 'break-word',
-                                        hyphens: 'auto'
-                                      }}
-                                    >
-                                      <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                  }`}
+                                  style={{ 
+                                    wordWrap: 'break-word', 
+                                    overflowWrap: 'break-word',
+                                    wordBreak: 'break-word',
+                                    hyphens: 'auto'
+                                  }}
+                                >
+                                  <ChatMessageContent content={msg.message} isUserMessage={!isAdmin} />
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-1">
                                       {format(new Date(msg.createdAt), "h:mm a")}
@@ -343,11 +345,18 @@ export default function Chat() {
                   {/* Message Input */}
                   <form onSubmit={handleSendMessage} className="p-4 border-t flex-shrink-0 bg-background">
                     <div className="flex gap-2">
-                      <Input
+                      <Textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
                         placeholder="Type your message..."
-                        className="flex-1 min-w-0"
+                        className="flex-1 min-w-0 resize-none"
+                        rows={1}
                       />
                       <Button 
                         type="submit" 
