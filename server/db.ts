@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, sql, inArray, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { 
@@ -441,6 +441,66 @@ export async function markMessagesAsRead(conversationId: number, userId: number)
       eq(chatMessages.conversationId, conversationId),
       eq(chatMessages.isRead, false)
     ));
+}
+
+// Get unread message counts for a user (messages from staff in their conversations)
+export async function getUnreadCountsForUser(userId: number): Promise<Record<number, number>> {
+  const db = await getDb();
+  if (!db) return {};
+  
+  // Get all conversations for this user
+  const userConversations = await db.select({ id: chatConversations.id })
+    .from(chatConversations)
+    .where(eq(chatConversations.userId, userId));
+  
+  const conversationIds = userConversations.map(c => c.id);
+  if (conversationIds.length === 0) return {};
+  
+  // Get unread messages from staff (admin or agent) in these conversations
+  const unreadMessages = await db.select({
+    conversationId: chatMessages.conversationId,
+    count: sql<number>`count(*)`
+  })
+    .from(chatMessages)
+    .where(and(
+      inArray(chatMessages.conversationId, conversationIds),
+      eq(chatMessages.isRead, false),
+      or(
+        eq(chatMessages.senderRole, 'admin'),
+        eq(chatMessages.senderRole, 'agent')
+      )
+    ))
+    .groupBy(chatMessages.conversationId);
+  
+  const result: Record<number, number> = {};
+  for (const row of unreadMessages) {
+    result[row.conversationId] = Number(row.count);
+  }
+  return result;
+}
+
+// Get unread message counts for admin (messages from users in all conversations)
+export async function getUnreadCountsForAdmin(): Promise<Record<number, number>> {
+  const db = await getDb();
+  if (!db) return {};
+  
+  // Get unread messages from users in all conversations
+  const unreadMessages = await db.select({
+    conversationId: chatMessages.conversationId,
+    count: sql<number>`count(*)`
+  })
+    .from(chatMessages)
+    .where(and(
+      eq(chatMessages.isRead, false),
+      eq(chatMessages.senderRole, 'user')
+    ))
+    .groupBy(chatMessages.conversationId);
+  
+  const result: Record<number, number> = {};
+  for (const row of unreadMessages) {
+    result[row.conversationId] = Number(row.count);
+  }
+  return result;
 }
 
 // ============ EMAIL TEMPLATE QUERIES ============
