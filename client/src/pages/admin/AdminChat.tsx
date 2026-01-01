@@ -3,12 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import ChatMessageContent from "@/components/ChatMessageContent";
 import { 
   MessageSquare, 
   Send,
@@ -281,7 +283,7 @@ export default function AdminChat() {
                                     hyphens: 'auto'
                                   }}
                                 >
-                                  <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
+                                  <ChatMessageContent content={msg.message} isUserMessage={!isAdmin} />
                                   <p className={`text-xs mt-1 ${
                                     isAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                   }`}>
@@ -301,7 +303,7 @@ export default function AdminChat() {
                 {/* Message Input */}
                 <div className="p-4 border-t flex-shrink-0 bg-background">
                   <div className="flex gap-2">
-                    <Input
+                    <Textarea
                       placeholder="Type a message..."
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
@@ -311,7 +313,8 @@ export default function AdminChat() {
                           handleSendMessage();
                         }
                       }}
-                      className="flex-1 min-w-0"
+                      className="flex-1 min-w-0 resize-none"
+                      rows={1}
                     />
                     <Button 
                       onClick={handleSendMessage}
