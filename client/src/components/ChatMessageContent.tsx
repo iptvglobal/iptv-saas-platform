@@ -38,7 +38,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUser
         target="_blank" 
         rel="noopener noreferrer" 
         // Use a light yellow/gold color for high contrast on the blue background
-className={`underline ${isUserMessage ? 'text-yellow-300 hover:text-yellow-200' : 'text-blue-600 hover:text-blue-500'}`}
+className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-500'}`} style={{ textShadow: isUserMessage ? '0 0 2px rgba(0,0,0,0.5)' : 'none' }}
       >
         {fullMatch}
       </a>
