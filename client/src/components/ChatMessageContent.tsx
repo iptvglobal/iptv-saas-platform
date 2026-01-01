@@ -13,14 +13,19 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUser
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
 
-  content.replace(urlRegex, (match, p1, p2, offset) => {
+  // Use a manual loop to ensure all parts of the string are processed correctly
+  const matches = [...content.matchAll(urlRegex)];
+  
+  matches.forEach((match) => {
+    const offset = match.index!;
+    const fullMatch = match[0];
     // Add the text before the link
     if (offset > lastIndex) {
       parts.push(content.substring(lastIndex, offset));
     }
 
     // Determine the full URL for the href attribute
-    let url = match;
+    let url = fullMatch;
     if (!url.match(/^https?:\/\//i)) {
       url = 'http://' + url;
     }
@@ -32,15 +37,14 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUser
         href={url} 
         target="_blank" 
         rel="noopener noreferrer" 
-        // Use a slightly different color for better contrast on the blue background
-className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-500'}`}
+        // Use a light yellow/gold color for high contrast on the blue background
+className={`underline ${isUserMessage ? 'text-yellow-300 hover:text-yellow-200' : 'text-blue-600 hover:text-blue-500'}`}
       >
-        {match}
+        {fullMatch}
       </a>
     );
 
-    lastIndex = offset + match.length;
-    return match;
+    lastIndex = offset + fullMatch.length;
   });
 
   // Add the remaining text
