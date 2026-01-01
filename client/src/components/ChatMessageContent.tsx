@@ -6,7 +6,8 @@ interface ChatMessageContentProps {
 }
 
 // Regex to find URLs: http(s)://... or www....
-const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])|(\b(www\.)[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/ig;
+// Updated Regex to include common TLDs and simplify the pattern for better matching
+const urlRegex = /(\b(https?:\/\/[^\s]+)|(\bwww\.[^\s]+))/ig;
 
 const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUserMessage }) => {
   const parts: React.ReactNode[] = [];
@@ -31,7 +32,8 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUser
         href={url} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className={`underline ${isUserMessage ? 'text-white/80 hover:text-white' : 'text-primary hover:text-primary/80'}`}
+        // Use a slightly different color for better contrast on the blue background
+className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text-primary hover:text-primary/80'}`}
       >
         {match}
       </a>
