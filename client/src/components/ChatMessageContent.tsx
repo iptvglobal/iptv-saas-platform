@@ -33,7 +33,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ content, isUser
         target="_blank" 
         rel="noopener noreferrer" 
         // Use a slightly different color for better contrast on the blue background
-className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text-primary hover:text-primary/80'}`}
+className={`underline ${isUserMessage ? 'text-white hover:text-gray-200' : 'text-blue-600 hover:text-blue-500'}`}
       >
         {match}
       </a>
