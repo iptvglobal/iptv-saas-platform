@@ -326,7 +326,7 @@ export default function Chat() {
                                     hyphens: 'auto'
                                   }}
                                 >
-                                  <ChatMessageContent content={msg.message} isUserMessage={!isAdmin} />
+                                  <ChatMessageContent content={msg.message} isUserMessage={isOwn} />
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-1">
                                       {format(new Date(msg.createdAt), "h:mm a")}
