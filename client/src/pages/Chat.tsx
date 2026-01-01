@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { 
@@ -22,12 +22,21 @@ export default function Chat() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
   
-  const { data: conversations, isLoading: conversationsLoading } = trpc.chat.myConversations.useQuery();
+  const { data: conversations, isLoading: conversationsLoading } = trpc.chat.myConversations.useQuery(
+    undefined,
+    { refetchInterval: 5000 } // Refetch every 5 seconds to check for new messages
+  );
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const { data: messages, isLoading: messagesLoading } = trpc.chat.getMessages.useQuery(
     { conversationId: selectedConversationId! },
     { enabled: !!selectedConversationId, refetchInterval: 3000 }
+  );
+
+  // Query to get unread counts for each conversation
+  const { data: unreadCounts } = trpc.chat.getUnreadCounts.useQuery(
+    undefined,
+    { refetchInterval: 5000 }
   );
   
   const createConversation = trpc.chat.createConversation.useMutation({
@@ -43,6 +52,8 @@ export default function Chat() {
   const sendMessage = trpc.chat.sendMessage.useMutation({
     onSuccess: () => {
       utils.chat.getMessages.invalidate({ conversationId: selectedConversationId! });
+      utils.chat.myConversations.invalidate();
+      utils.chat.getUnreadCounts.invalidate();
       setNewMessage("");
     }
   });
@@ -61,6 +72,36 @@ export default function Chat() {
       setSelectedConversationId(conversations[0].id);
     }
   }, [conversations, selectedConversationId]);
+
+  // Invalidate unread counts when selecting a conversation (messages will be marked as read)
+  useEffect(() => {
+    if (selectedConversationId && messages) {
+      // Small delay to allow the backend to mark messages as read
+      const timer = setTimeout(() => {
+        utils.chat.getUnreadCounts.invalidate();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedConversationId, messages, utils.chat.getUnreadCounts]);
+
+  // Sort conversations: unread first, then by lastMessageAt
+  const sortedConversations = useMemo(() => {
+    if (!conversations) return [];
+    
+    return [...conversations].sort((a, b) => {
+      const aUnread = unreadCounts?.[a.id] || 0;
+      const bUnread = unreadCounts?.[b.id] || 0;
+      
+      // First sort by unread (conversations with unread messages first)
+      if (aUnread > 0 && bUnread === 0) return -1;
+      if (bUnread > 0 && aUnread === 0) return 1;
+      
+      // Then sort by lastMessageAt (most recent first)
+      const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [conversations, unreadCounts]);
   
   const handleNewConversation = async () => {
     try {
@@ -147,36 +188,49 @@ export default function Chat() {
                   </div>
                 ) : (
                   <div className="p-2">
-                    {conversations.map(conv => (
-                      <button
-                        key={conv.id}
-                        onClick={() => handleSelectConversation(conv.id)}
-                        className={`w-full p-3 rounded-lg text-left transition-colors ${
-                          selectedConversationId === conv.id 
-                            ? "bg-primary/10 border border-primary/20" 
-                            : "hover:bg-muted"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 flex-shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              <MessageCircle className="h-5 w-5" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="font-medium truncate">
-                              {conv.subject || `Conversation #${conv.id}`}
+                    {sortedConversations.map(conv => {
+                      const unreadCount = unreadCounts?.[conv.id] || 0;
+                      const hasUnread = unreadCount > 0;
+                      
+                      return (
+                        <button
+                          key={conv.id}
+                          onClick={() => handleSelectConversation(conv.id)}
+                          className={`w-full p-3 rounded-lg text-left transition-colors ${
+                            selectedConversationId === conv.id 
+                              ? "bg-primary/10 border border-primary/20" 
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              <Avatar className="h-10 w-10 flex-shrink-0">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  <MessageCircle className="h-5 w-5" />
+                                </AvatarFallback>
+                              </Avatar>
+                              {/* Red dot indicator for unread messages */}
+                              {hasUnread && (
+                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold">
+                                  {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                              )}
                             </div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              {conv.lastMessageAt 
-                                ? format(new Date(conv.lastMessageAt), "MMM d, h:mm a")
-                                : "No messages yet"
-                              }
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className={`font-medium truncate ${hasUnread ? 'text-foreground' : ''}`}>
+                                {conv.subject || `Conversation #${conv.id}`}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {conv.lastMessageAt 
+                                  ? format(new Date(conv.lastMessageAt), "MMM d, h:mm a")
+                                  : "No messages yet"
+                                }
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
