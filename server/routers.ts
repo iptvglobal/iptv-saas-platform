@@ -662,8 +662,8 @@ export const appRouter = router({
         if (conversation.userId !== ctx.user.id && ctx.user.role === "user") {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
-        // Mark messages as read
-        await db.markMessagesAsRead(input.conversationId, ctx.user.id);
+        // Mark messages as read based on who is viewing
+        await db.markMessagesAsRead(input.conversationId, ctx.user.id, ctx.user.role);
         return db.getMessagesByConversationId(input.conversationId);
       }),
     
