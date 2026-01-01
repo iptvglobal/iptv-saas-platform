@@ -721,6 +721,16 @@ export const appRouter = router({
 
         return { success: true, id };
       }),
+
+    // Get unread message counts for user's conversations (messages from staff)
+    getUnreadCounts: protectedProcedure.query(async ({ ctx }) => {
+      return db.getUnreadCountsForUser(ctx.user.id);
+    }),
+
+    // Get unread message counts for admin (messages from users)
+    getAdminUnreadCounts: staffProcedure.query(async () => {
+      return db.getUnreadCountsForAdmin();
+    }),
   }),
 
   // ============ EMAIL TEMPLATES ============
