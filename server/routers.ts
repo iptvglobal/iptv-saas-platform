@@ -531,7 +531,7 @@ export const appRouter = router({
         userId: z.number(),
         orderId: z.number(),
         connectionNumber: z.number().min(1).max(10),
-        credentialType: z.enum(["xtream", "m3u", "portal"]),
+        credentialType: z.enum(["xtream", "m3u", "portal", "combined"]),
         serverUrl: z.string().optional(),
         username: z.string().optional(),
         password: z.string().optional(),
@@ -579,7 +579,7 @@ export const appRouter = router({
     update: adminProcedure
       .input(z.object({
         id: z.number(),
-        credentialType: z.enum(["xtream", "m3u", "portal"]).optional(),
+        credentialType: z.enum(["xtream", "m3u", "portal", "combined"]).optional(),
         serverUrl: z.string().optional(),
         username: z.string().optional(),
         password: z.string().optional(),
