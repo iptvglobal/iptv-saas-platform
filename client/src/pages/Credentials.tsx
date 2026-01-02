@@ -101,8 +101,8 @@ export default function Credentials() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Xtream Codes */}
-          {credential.credentialType === "xtream" && (
+          {/* Xtream Codes / Combined */}
+          {(credential.credentialType === "xtream" || credential.credentialType === "combined") && (
             <>
               {credential.serverUrl && (
                 <CredentialField 
@@ -131,8 +131,8 @@ export default function Credentials() {
             </>
           )}
           
-          {/* M3U */}
-          {credential.credentialType === "m3u" && (
+          {/* M3U / Combined */}
+          {(credential.credentialType === "m3u" || credential.credentialType === "combined") && (
             <>
               {credential.m3uUrl && (
                 <CredentialField 
