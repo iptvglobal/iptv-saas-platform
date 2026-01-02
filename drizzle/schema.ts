@@ -100,7 +100,7 @@ export const orders = pgTable("orders", {
 });
 
 // IPTV credential types enum
-export const credentialTypeEnum = pgEnum("credential_type", ["xtream", "m3u", "portal"]);
+export const credentialTypeEnum = pgEnum("credential_type", ["xtream", "m3u", "portal", "combined"]);
 
 // IPTV credentials table
 export const iptvCredentials = pgTable("iptvCredentials", {
