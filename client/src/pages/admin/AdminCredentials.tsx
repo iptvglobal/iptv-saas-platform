@@ -27,7 +27,7 @@ type CredentialFormData = {
   userId: number | null;
   orderId: number | null;
   connectionNumber: number;
-  credentialType: "xtream" | "m3u" | "portal";
+  credentialType: "xtream" | "m3u" | "portal" | "combined";
   serverUrl: string;
   username: string;
   password: string;
@@ -43,7 +43,7 @@ const defaultCredentialForm: CredentialFormData = {
   userId: null,
   orderId: null,
   connectionNumber: 1,
-  credentialType: "xtream",
+  credentialType: "combined",
   serverUrl: "",
   username: "",
   password: "",
@@ -373,7 +373,7 @@ export default function AdminCredentials() {
                   <Label>Credential Type</Label>
                   <Select 
                     value={credentialForm.credentialType} 
-                    onValueChange={(v) => setCredentialForm(prev => ({ ...prev, credentialType: v as CredentialFormData["credentialType"] }))}
+                    onValueChange={(v) => setCredentialForm(prev => ({ ...prev, credentialType: v as "xtream" | "m3u" | "portal" | "combined" }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -382,13 +382,14 @@ export default function AdminCredentials() {
                       <SelectItem value="xtream">Xtream Codes</SelectItem>
                       <SelectItem value="m3u">M3U + EPG</SelectItem>
                       <SelectItem value="portal">Portal URL</SelectItem>
+                      <SelectItem value="combined">Combined (Xtream + M3U + EPG)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               
-              {/* Xtream Codes Fields */}
-              {credentialForm.credentialType === "xtream" && (
+              {/* Combined / Xtream Fields */}
+              {(credentialForm.credentialType === "xtream" || credentialForm.credentialType === "combined") && (
                 <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
                   <h4 className="font-medium">Xtream Codes Details</h4>
                   <div className="space-y-2">
@@ -399,35 +400,35 @@ export default function AdminCredentials() {
                       placeholder="http://server.example.com:8080"
                     />
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Username</Label>
-                      <Input
-                        value={credentialForm.username}
-                        onChange={(e) => setCredentialForm(prev => ({ ...prev, username: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Password</Label>
-                      <Input
-                        value={credentialForm.password}
-                        onChange={(e) => setCredentialForm(prev => ({ ...prev, password: e.target.value }))}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Username</Label>
+                    <Input
+                      value={credentialForm.username}
+                      onChange={(e) => setCredentialForm(prev => ({ ...prev, username: e.target.value }))}
+                      placeholder="username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Password</Label>
+                    <Input
+                      value={credentialForm.password}
+                      onChange={(e) => setCredentialForm(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="password"
+                    />
                   </div>
                 </div>
               )}
               
               {/* M3U Fields */}
-              {credentialForm.credentialType === "m3u" && (
+              {(credentialForm.credentialType === "m3u" || credentialForm.credentialType === "combined") && (
                 <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
-                  <h4 className="font-medium">M3U + EPG Details</h4>
+                  <h4 className="font-medium">M3U Details</h4>
                   <div className="space-y-2">
                     <Label>M3U URL</Label>
                     <Input
                       value={credentialForm.m3uUrl}
                       onChange={(e) => setCredentialForm(prev => ({ ...prev, m3uUrl: e.target.value }))}
-                      placeholder="http://server.example.com/get.php?..."
+                      placeholder="http://server.example.com/get.php?username=...&password=...&type=m3u_plus&output=ts"
                     />
                   </div>
                   <div className="space-y-2">
@@ -435,7 +436,7 @@ export default function AdminCredentials() {
                     <Input
                       value={credentialForm.epgUrl}
                       onChange={(e) => setCredentialForm(prev => ({ ...prev, epgUrl: e.target.value }))}
-                      placeholder="http://server.example.com/xmltv.php?..."
+                      placeholder="http://server.example.com/xmltv.php?username=...&password=..."
                     />
                   </div>
                 </div>
