@@ -30,6 +30,7 @@ export default function AdminChat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Query to get unread counts for admin (messages from users)
   const { data: unreadCounts } = trpc.chat.getAdminUnreadCounts.useQuery(
@@ -111,8 +112,17 @@ export default function AdminChat() {
     setSelectedConversation(null);
   };
   
+  // Smart auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollElement = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
+    if (!scrollElement) return;
+
+    // Check if user is near the bottom (e.g., last 100px)
+    const isNearBottom = scrollElement.scrollHeight - scrollElement.clientHeight <= scrollElement.scrollTop + 100;
+
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
   
   const selectedConv = conversations?.find((c: { id: number }) => c.id === selectedConversation);
@@ -248,7 +258,7 @@ export default function AdminChat() {
                 
                 {/* Messages */}
                 <CardContent className="flex-1 p-0 overflow-hidden">
-                  <ScrollArea className="h-full">
+                  <ScrollArea className="h-full" ref={scrollAreaRef}>
                     <div className="p-4">
                       {messagesLoading ? (
                         <div className="space-y-3">
