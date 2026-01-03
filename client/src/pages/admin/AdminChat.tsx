@@ -115,13 +115,16 @@ export default function AdminChat() {
   // Smart auto-scroll to bottom when new messages arrive
   useEffect(() => {
     const scrollElement = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
-    if (!scrollElement) return;
+    if (!scrollElement || !messages || messages.length === 0) return;
 
-    // Check if user is near the bottom (e.g., last 100px)
-    const isNearBottom = scrollElement.scrollHeight - scrollElement.clientHeight <= scrollElement.scrollTop + 100;
+    // Check if user is at the bottom (within 50px)
+    const isAtBottom = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight < 50;
 
-    if (isNearBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Only auto-scroll if user is already at the bottom
+    if (isAtBottom) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     }
   }, [messages]);
   
@@ -293,7 +296,7 @@ export default function AdminChat() {
                                     hyphens: 'auto'
                                   }}
                                 >
-                                  <ChatMessageContent content={msg.message} isUserMessage={!isAdmin} />
+                                  <ChatMessageContent content={msg.message} isUserMessage={isAdmin} />
                                   <p className={`text-xs mt-1 ${
                                     isAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                   }`}>
