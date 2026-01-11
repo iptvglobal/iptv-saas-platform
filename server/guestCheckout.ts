@@ -23,7 +23,9 @@ export function registerGuestCheckoutRoutes(app: Express) {
         paymentMethodId,
         paymentWidgetId,
         paymentMethodName,
-        paymentMethodType
+        paymentMethodType,
+        credentialsType,
+        macAddress
       } = req.body;
 
       // Validate required fields
@@ -48,6 +50,19 @@ export function registerGuestCheckoutRoutes(app: Express) {
       if (password.length < 6) {
         res.status(400).json({ error: "Password must be at least 6 characters" });
         return;
+      }
+
+      // Validate MAC address if credentials type is MAG
+      if (credentialsType === "mag") {
+        if (!macAddress) {
+          res.status(400).json({ error: "MAC address is required for MAG Portal" });
+          return;
+        }
+        const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+        if (!macRegex.test(macAddress)) {
+          res.status(400).json({ error: "Invalid MAC address format" });
+          return;
+        }
       }
 
       console.log("[Guest Checkout] Processing checkout for:", email);
@@ -166,6 +181,13 @@ export function registerGuestCheckoutRoutes(app: Express) {
         return;
       }
 
+      // Store credentials preference (this would need to be added to the database schema)
+      // For now, we'll store it in activity logs
+      const credentialsData = {
+        credentialsType: credentialsType || "xtream",
+        macAddress: credentialsType === "mag" ? macAddress : undefined
+      };
+
       // Log the activity
       await db.createActivityLog({
         userId: dbUser.id,
@@ -176,7 +198,8 @@ export function registerGuestCheckoutRoutes(app: Express) {
           planId, 
           connections, 
           isNewUser,
-          email 
+          email,
+          ...credentialsData
         },
       });
 
@@ -209,13 +232,20 @@ export function registerGuestCheckoutRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      console.log("[Guest Checkout] Checkout completed successfully", { orderId, userId, isNewUser });
+      console.log("[Guest Checkout] Checkout completed successfully", { 
+        orderId, 
+        userId, 
+        isNewUser,
+        credentialsType,
+        hasMacAddress: !!macAddress
+      });
 
       res.json({ 
         success: true,
         orderId,
         userId,
         isNewUser,
+        credentialsType,
         message: isNewUser 
           ? "Account created and order placed successfully" 
           : "Order placed successfully"
