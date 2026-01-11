@@ -367,6 +367,8 @@ export const appRouter = router({
         paymentWidgetId: z.number().optional(),
         paymentMethodName: z.string().optional(),
         paymentMethodType: z.string().optional(),
+        credentialsType: z.enum(["xtream", "mag", "m3u", "enigma2"]).optional(),
+        macAddress: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const orderId = await db.createOrder({
@@ -378,7 +380,12 @@ export const appRouter = router({
           action: "create_order",
           entityType: "order",
           entityId: orderId || undefined,
-          details: { planId: input.planId, connections: input.connections },
+          details: { 
+            planId: input.planId, 
+            connections: input.connections,
+            credentialsType: input.credentialsType,
+            macAddress: input.credentialsType === "mag" ? input.macAddress : undefined
+          },
         });
         
         // Send order confirmation email
