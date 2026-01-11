@@ -16,6 +16,10 @@ import Credentials from "./pages/Credentials";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 
+// Public Pages (no auth required)
+import Pricing from "./pages/Pricing";
+import GuestCheckout from "./pages/GuestCheckout";
+
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -97,6 +101,10 @@ function Router() {
           return isAuthenticated ? <Redirect to="/dashboard" /> : <Login />;
         }}
       </Route>
+      
+      {/* Public Routes - No authentication required */}
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/order/:planId" component={GuestCheckout} />
       
       {/* User Routes */}
       <Route path="/dashboard">
