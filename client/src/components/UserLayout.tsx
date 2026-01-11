@@ -31,7 +31,6 @@ const userMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Package, label: "Plans", path: "/plans" },
   { icon: ShoppingCart, label: "My Orders", path: "/orders" },
-  { icon: Key, label: "My Credentials", path: "/credentials" },
   { icon: MessageCircle, label: "Support Chat", path: "/chat" },
 ];
 
