@@ -164,7 +164,7 @@ export function registerGuestCheckoutRoutes(app: Express) {
         return;
       }
 
-      // Create the order
+      // Create the order with credentials type and MAC address
       const orderId = await db.createOrder({
         userId: dbUser.id,
         planId,
@@ -174,6 +174,8 @@ export function registerGuestCheckoutRoutes(app: Express) {
         paymentWidgetId,
         paymentMethodName,
         paymentMethodType,
+        credentialsType: credentialsType || "xtream",
+        macAddress: credentialsType === "mag" ? macAddress : undefined,
       });
 
       if (!orderId) {
@@ -181,27 +183,31 @@ export function registerGuestCheckoutRoutes(app: Express) {
         return;
       }
 
-      // Store credentials preference (this would need to be added to the database schema)
-      // For now, we'll store it in activity logs
+      // Credentials preference is now stored in the order
       const credentialsData = {
         credentialsType: credentialsType || "xtream",
         macAddress: credentialsType === "mag" ? macAddress : undefined
       };
 
       // Log the activity
-      await db.createActivityLog({
-        userId: dbUser.id,
-        action: "guest_checkout",
-        entityType: "order",
-        entityId: orderId,
-        details: { 
-          planId, 
-          connections, 
-          isNewUser,
-          email,
-          ...credentialsData
-        },
-      });
+      try {
+        await db.createActivityLog({
+          userId: dbUser.id,
+          action: "guest_checkout",
+          entityType: "order",
+          entityId: orderId,
+          details: { 
+            planId, 
+            connections, 
+            isNewUser,
+            email,
+            ...credentialsData
+          },
+        });
+      } catch (logError) {
+        console.error('[Guest Checkout] Failed to log activity:', logError);
+        // Don't fail the checkout if logging fails
+      }
 
       // Send order confirmation email
       try {
