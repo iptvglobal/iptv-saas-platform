@@ -22,8 +22,13 @@ import {
   Bitcoin,
   Mail,
   Lock,
-  User
+  User,
+  Tv,
+  Smartphone,
+  Code
 } from "lucide-react";
+
+type CredentialsType = "xtream" | "mag" | "m3u" | "enigma2" | null;
 
 export default function GuestCheckout() {
   const [, params] = useRoute("/order/:planId");
@@ -61,10 +66,16 @@ export default function GuestCheckout() {
   
   const [selectedMethod, setSelectedMethod] = useState<string>("");
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const [orderId, setOrderId] = useState<number | null>(null);
+  
+  // Credentials selection state
+  const [selectedCredentialsType, setSelectedCredentialsType] = useState<CredentialsType>(null);
+  const [macAddress, setMacAddress] = useState("");
+  const [credentialsSubmitted, setCredentialsSubmitted] = useState(false);
   
   const price = plan?.pricing?.find(p => p.connections === connections)?.price || "0.00";
   
@@ -81,15 +92,20 @@ export default function GuestCheckout() {
     }
   }, [isProcessing, countdown]);
   
-  // If user is already authenticated, redirect to regular checkout
+  // If user is already authenticated AND not in guest checkout flow, redirect to regular checkout
   useEffect(() => {
-    if (isAuthenticated && planId) {
+    if (isAuthenticated && accountCreated === false && planId) {
       setLocation(`/checkout/${planId}?connections=${connections}`);
     }
-  }, [isAuthenticated, planId, connections]);
+  }, [isAuthenticated, planId, connections, accountCreated]);
   
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+  
+  const validateMacAddress = (mac: string) => {
+    // MAC address format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
+    return /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(mac);
   };
   
   const handleGuestCheckout = async () => {
@@ -132,6 +148,8 @@ export default function GuestCheckout() {
           paymentWidgetId: selectedMethod === "crypto-widget" ? paymentWidget?.id : undefined,
           paymentMethodName: selectedMethod === "crypto-widget" ? "Cryptocurrency" : selectedPaymentMethod?.name,
           paymentMethodType: selectedMethod === "crypto-widget" ? "crypto" : selectedPaymentMethod?.type,
+          credentialsType: selectedCredentialsType,
+          macAddress: selectedCredentialsType === "mag" ? macAddress : undefined,
         }),
       });
       
@@ -145,6 +163,7 @@ export default function GuestCheckout() {
       
       setAccountCreated(true);
       setOrderId(data.orderId);
+      setCredentialsSubmitted(true);
       setShowPaymentDialog(true);
       
       // Refresh auth state to get the new session
@@ -183,11 +202,37 @@ export default function GuestCheckout() {
   };
   
   const handleProceedToPayment = () => {
+    // If not authenticated and credentials not selected, show credentials dialog first
+    if (!accountCreated && !credentialsSubmitted) {
+      setShowCredentialsDialog(true);
+      return;
+    }
+    
     if (isAuthenticated || accountCreated) {
       handleAuthenticatedCheckout();
     } else {
       handleGuestCheckout();
     }
+  };
+  
+  const handleCredentialsSelection = () => {
+    if (!selectedCredentialsType) {
+      toast.error("Please select a credentials type");
+      return;
+    }
+    
+    if (selectedCredentialsType === "mag" && !macAddress) {
+      toast.error("Please enter your MAC address");
+      return;
+    }
+    
+    if (selectedCredentialsType === "mag" && !validateMacAddress(macAddress)) {
+      toast.error("Please enter a valid MAC address (format: XX:XX:XX:XX:XX:XX)");
+      return;
+    }
+    
+    setShowCredentialsDialog(false);
+    handleGuestCheckout();
   };
   
   const handleConfirmPayment = () => {
@@ -203,10 +248,8 @@ export default function GuestCheckout() {
         await confirmPayment.mutateAsync({ orderId });
         toast.success("Payment confirmed! Your order is now pending verification.");
         
-        // Redirect to orders page if authenticated, otherwise show success message
-        if (isAuthenticated || accountCreated) {
-          setLocation("/orders");
-        }
+        // Redirect to orders page
+        setLocation("/orders");
       } catch (error) {
         toast.error("Failed to confirm payment. Please contact support.");
       }
@@ -410,6 +453,121 @@ export default function GuestCheckout() {
             </Button>
           </CardContent>
         </Card>
+        
+        {/* Credentials Selection Dialog */}
+        <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>How would you like to receive your credentials?</DialogTitle>
+              <DialogDescription>
+                Choose your preferred IPTV player format
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-3">
+              <div 
+                onClick={() => setSelectedCredentialsType("xtream")}
+                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                  selectedCredentialsType === "xtream" 
+                    ? "border-primary bg-primary/5" 
+                    : "border-muted hover:border-primary/50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Code className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">Xtream Codes API</div>
+                    <div className="text-xs text-muted-foreground">For advanced users and developers</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div 
+                onClick={() => setSelectedCredentialsType("mag")}
+                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                  selectedCredentialsType === "mag" 
+                    ? "border-primary bg-primary/5" 
+                    : "border-muted hover:border-primary/50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Tv className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">MAG Portal URL</div>
+                    <div className="text-xs text-muted-foreground">For MAG boxes (requires MAC address)</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div 
+                onClick={() => setSelectedCredentialsType("m3u")}
+                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                  selectedCredentialsType === "m3u" 
+                    ? "border-primary bg-primary/5" 
+                    : "border-muted hover:border-primary/50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Code className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">M3U / M3U8 Playlist</div>
+                    <div className="text-xs text-muted-foreground">For VLC, Kodi, and other players</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div 
+                onClick={() => setSelectedCredentialsType("enigma2")}
+                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                  selectedCredentialsType === "enigma2" 
+                    ? "border-primary bg-primary/5" 
+                    : "border-muted hover:border-primary/50"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Smartphone className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">Enigma2 (E2) / Dreambox</div>
+                    <div className="text-xs text-muted-foreground">For Dreambox and compatible receivers</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* MAC Address Input for MAG */}
+              {selectedCredentialsType === "mag" && (
+                <div className="space-y-2 pt-4 border-t">
+                  <Label htmlFor="mac-address">MAC Address *</Label>
+                  <Input
+                    id="mac-address"
+                    type="text"
+                    placeholder="00:1A:2B:3C:4D:5E"
+                    value={macAddress}
+                    onChange={(e) => setMacAddress(e.target.value.toUpperCase())}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Format: XX:XX:XX:XX:XX:XX (find it on your MAG box settings)
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowCredentialsDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1 gradient-primary"
+                  onClick={handleCredentialsSelection}
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         
         {/* Payment Dialog */}
         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
