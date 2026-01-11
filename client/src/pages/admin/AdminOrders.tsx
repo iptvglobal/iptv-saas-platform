@@ -358,6 +358,20 @@ export default function AdminOrders() {
                   </div>
                 )}
                 
+                {viewingOrder.credentialsType && (
+                  <div>
+                    <Label className="text-muted-foreground">Requested Credentials Type</Label>
+                    <div className="font-medium uppercase">{viewingOrder.credentialsType}</div>
+                  </div>
+                )}
+                
+                {viewingOrder.macAddress && (
+                  <div>
+                    <Label className="text-muted-foreground">MAC Address (for MAG Portal)</Label>
+                    <div className="font-mono font-medium">{viewingOrder.macAddress}</div>
+                  </div>
+                )}
+                
                 {viewingOrder.notes && (
                   <div>
                     <Label className="text-muted-foreground">Notes</Label>
