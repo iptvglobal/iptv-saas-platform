@@ -104,8 +104,10 @@ export default function GuestCheckout() {
   };
   
   const validateMacAddress = (mac: string) => {
-    // MAC address format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
-    return /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(mac);
+    // MAC address format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX or XXXXXXXXXXXX
+    // More flexible validation to accept various formats
+    const cleanMac = mac.replace(/[:-]/g, '').toUpperCase();
+    return /^[0-9A-F]{12}$/.test(cleanMac);
   };
   
   const handleGuestCheckout = async () => {
@@ -202,8 +204,8 @@ export default function GuestCheckout() {
   };
   
   const handleProceedToPayment = () => {
-    // If not authenticated and credentials not selected, show credentials dialog first
-    if (!accountCreated && !credentialsSubmitted) {
+    // Show credentials dialog if not already submitted (for both new and existing users)
+    if (!credentialsSubmitted) {
       setShowCredentialsDialog(true);
       return;
     }
@@ -227,12 +229,20 @@ export default function GuestCheckout() {
     }
     
     if (selectedCredentialsType === "mag" && !validateMacAddress(macAddress)) {
-      toast.error("Please enter a valid MAC address (format: XX:XX:XX:XX:XX:XX)");
+      toast.error("Please enter a valid MAC address (format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX)");
       return;
     }
     
     setShowCredentialsDialog(false);
-    handleGuestCheckout();
+    setCredentialsSubmitted(true);
+    
+    // If already authenticated, proceed to authenticated checkout
+    // Otherwise, proceed to guest checkout
+    if (isAuthenticated) {
+      handleAuthenticatedCheckout();
+    } else {
+      handleGuestCheckout();
+    }
   };
   
   const handleConfirmPayment = () => {
