@@ -281,8 +281,8 @@ export default function Dashboard() {
 
         </div>
         
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
+        {/* Stats Cards - Important Stats Only */}
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="card-hover">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -293,7 +293,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{activeCredentials}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {activeCredentials === 1 ? "connection" : "connections"} active
+                connections active
               </p>
             </CardContent>
           </Card>
@@ -325,6 +325,113 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground mt-1">
                 completed purchases
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Expired/Inactive
+              </CardTitle>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{expiredCredentials}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                credentials
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Credentials Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold">My Credentials</h2>
+              <p className="text-muted-foreground">Access your IPTV login information</p>
+            </div>
+            <Link href="/plans">
+              <Button className="gradient-primary gap-2">
+                <Key className="h-4 w-4" />
+                Get More Connections
+              </Button>
+            </Link>
+          </div>
+
+          {/* Credentials Tabs */}
+          {!credentials || credentials.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Key className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="font-semibold mb-2">No Credentials Yet</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                  You don't have any IPTV credentials yet. Purchase a plan to get started.
+                </p>
+                <Link href="/plans">
+                  <Button>Browse Plans</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs defaultValue="active" className="w-full">
+              <TabsList>
+                <TabsTrigger value="active">Active ({activeCredentials})</TabsTrigger>
+                <TabsTrigger value="expired">Expired ({expiredCredentials})</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="active" className="mt-4">
+                {activeCredentials === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      No active credentials
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {credentials.filter(c => c.isActive).map(cred => (
+                      <CredentialCard key={cred.id} credential={cred} />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="expired" className="mt-4">
+                {expiredCredentials === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      No expired credentials
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {credentials.filter(c => !c.isActive).map(cred => (
+                      <CredentialCard key={cred.id} credential={cred} />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+
+          {/* Help Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">How to Use Your Credentials</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <div>
+                <strong className="text-foreground">Xtream Codes:</strong> Enter the Server URL, Username, and Password in your IPTV app's Xtream Codes section.
+              </div>
+              <div>
+                <strong className="text-foreground">M3U:</strong> Copy the M3U URL and paste it into your IPTV player. Add the EPG URL for program guide.
+              </div>
+              <div>
+                <strong className="text-foreground">Portal:</strong> Enter the Portal URL and MAC Address in your STB Emulator or similar app.
+              </div>
+              <div className="pt-2">
+                Need help? <a href="https://members.iptvtop.live/chat" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Contact our support team</a>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -443,124 +550,6 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Credentials Section - Moved from Credentials page */}
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold">My Credentials</h2>
-              <p className="text-muted-foreground">Access your IPTV login information</p>
-            </div>
-            <Link href="/plans">
-              <Button className="gradient-primary gap-2">
-                <Key className="h-4 w-4" />
-                Get More Connections
-              </Button>
-            </Link>
-          </div>
-
-          {/* Credentials Stats */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-emerald-500/10">
-                  <CheckCircle className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{activeCredentials}</div>
-                  <div className="text-sm text-muted-foreground">Active Connections</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 rounded-lg bg-muted">
-                  <AlertCircle className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{expiredCredentials}</div>
-                  <div className="text-sm text-muted-foreground">Expired/Inactive</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Credentials Tabs */}
-          {!credentials || credentials.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Key className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold mb-2">No Credentials Yet</h3>
-                <p className="text-muted-foreground text-sm mb-4">
-                  You don't have any IPTV credentials yet. Purchase a plan to get started.
-                </p>
-                <Link href="/plans">
-                  <Button>Browse Plans</Button>
-                </Link>
-              </CardContent>
-            </Card>
-          ) : (
-            <Tabs defaultValue="active" className="w-full">
-              <TabsList>
-                <TabsTrigger value="active">Active ({activeCredentials})</TabsTrigger>
-                <TabsTrigger value="expired">Expired ({expiredCredentials})</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="active" className="mt-4">
-                {activeCredentials === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      No active credentials
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {credentials.filter(c => c.isActive).map(cred => (
-                      <CredentialCard key={cred.id} credential={cred} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="expired" className="mt-4">
-                {expiredCredentials === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      No expired credentials
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {credentials.filter(c => !c.isActive).map(cred => (
-                      <CredentialCard key={cred.id} credential={cred} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
-
-          {/* Help Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">How to Use Your Credentials</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-muted-foreground">
-              <div>
-                <strong className="text-foreground">Xtream Codes:</strong> Enter the Server URL, Username, and Password in your IPTV app's Xtream Codes section.
-              </div>
-              <div>
-                <strong className="text-foreground">M3U:</strong> Copy the M3U URL and paste it into your IPTV player. Add the EPG URL for program guide.
-              </div>
-              <div>
-                <strong className="text-foreground">Portal:</strong> Enter the Portal URL and MAC Address in your STB Emulator or similar app.
-              </div>
-              <div className="pt-2">
-                Need help? <a href="https://members.iptvtop.live/chat" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Contact our support team</a>
-              </div>
             </CardContent>
           </Card>
         </div>
