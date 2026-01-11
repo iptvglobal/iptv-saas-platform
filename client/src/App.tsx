@@ -12,7 +12,6 @@ import Dashboard from "./pages/Dashboard";
 import Plans from "./pages/Plans";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
-import Credentials from "./pages/Credentials";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 
@@ -27,10 +26,10 @@ import AdminPlans from "./pages/admin/AdminPlans";
 import AdminPaymentMethods from "./pages/admin/AdminPaymentMethods";
 import AdminPaymentWidgets from "./pages/admin/AdminPaymentWidgets";
 import AdminOrders from "./pages/admin/AdminOrders";
-import AdminCredentials from "./pages/admin/AdminCredentials";
 import AdminChat from "./pages/admin/AdminChat";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
+import AdminCredentials from "./pages/admin/AdminCredentials";
 
 // Protected route wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -118,9 +117,6 @@ function Router() {
       </Route>
       <Route path="/orders">
         {() => <ProtectedRoute component={Orders} />}
-      </Route>
-      <Route path="/credentials">
-        {() => <ProtectedRoute component={Credentials} />}
       </Route>
       <Route path="/chat">
         {() => <ProtectedRoute component={Chat} />}
