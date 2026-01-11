@@ -76,6 +76,9 @@ export const paymentMethods = pgTable("paymentMethods", {
 // Order status enum
 export const orderStatusEnum = pgEnum("order_status", ["pending", "verified", "rejected"]);
 
+// Credentials type enum for guest checkout
+export const guestCredentialsTypeEnum = pgEnum("guest_credentials_type", ["xtream", "mag", "m3u", "enigma2"]);
+
 // Orders table
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -87,6 +90,8 @@ export const orders = pgTable("orders", {
   paymentWidgetId: integer("paymentWidgetId"),
   paymentMethodName: varchar("paymentMethodName", { length: 255 }),
   paymentMethodType: varchar("paymentMethodType", { length: 50 }),
+  credentialsType: guestCredentialsTypeEnum("credentialsType").default("xtream"),
+  macAddress: varchar("macAddress", { length: 50 }),
   status: orderStatusEnum("status").default("pending").notNull(),
   paymentConfirmedAt: timestamp("paymentConfirmedAt"),
   verifiedAt: timestamp("verifiedAt"),
@@ -201,6 +206,7 @@ export type PaymentMethod = typeof paymentMethods.$inferSelect;
 export type InsertPaymentMethod = typeof paymentMethods.$inferInsert;
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
+export type SelectOrder = typeof orders.$inferSelect;
 export type IptvCredential = typeof iptvCredentials.$inferSelect;
 export type InsertIptvCredential = typeof iptvCredentials.$inferInsert;
 export type ChatConversation = typeof chatConversations.$inferSelect;
