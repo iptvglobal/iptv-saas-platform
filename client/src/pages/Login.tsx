@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AUTH_ENDPOINTS } from "@/const";
-import { Tv, Shield, Zap, Globe, Loader2, ArrowLeft } from "lucide-react";
+import { Tv, Shield, Zap, Globe, Loader2, ArrowLeft, ShoppingCart } from "lucide-react";
+import { Link } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
@@ -679,6 +680,16 @@ export default function Login() {
           {renderForm()}
         </CardContent>
       </Card>
+
+      {/* View Plans Link */}
+      <div className="mt-6">
+        <Link href="/pricing">
+          <button className="flex items-center gap-2 text-primary hover:underline text-sm font-medium">
+            <ShoppingCart className="h-4 w-4" />
+            View Plans & Pricing
+          </button>
+        </Link>
+      </div>
 
       {/* Footer */}
       <p className="text-xs text-muted-foreground mt-8 text-center">
