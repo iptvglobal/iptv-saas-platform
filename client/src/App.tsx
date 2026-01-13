@@ -30,6 +30,7 @@ import AdminChat from "./pages/admin/AdminChat";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
 import AdminCredentials from "./pages/admin/AdminCredentials";
+import AdminEmailSettings from "./pages/admin/AdminEmailSettings";
 
 // Protected route wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -155,6 +156,9 @@ function Router() {
       </Route>
       <Route path="/admin/email-templates">
         {() => <AdminRoute component={AdminEmailTemplates} />}
+      </Route>
+      <Route path="/admin/email-settings">
+        {() => <AdminRoute component={AdminEmailSettings} />}
       </Route>
       
       {/* 404 */}
