@@ -11,7 +11,7 @@ import nodemailer from 'nodemailer';
    CONFIG
 ======================= */
 const mailtrapHost = process.env.MAILTRAP_HOST || 'live.smtp.mailtrap.io';
-const mailtrapPort = parseInt(process.env.MAILTRAP_PORT || '2525', 10);
+const mailtrapPort = parseInt(process.env.MAILTRAP_PORT || '587', 10);
 const mailtrapUser = process.env.MAILTRAP_USER;
 const mailtrapPassword = process.env.MAILTRAP_PASSWORD;
 const senderEmail = process.env.MAILTRAP_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'noreply@iptv.com';
