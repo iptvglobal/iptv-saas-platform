@@ -208,72 +208,76 @@ export default function Checkout() {
         {/* Payment Methods */}
         <Card>
           <CardHeader>
-            <CardTitle>Select Payment Method</CardTitle>
-            <CardDescription>Choose how you want to pay</CardDescription>
+            <CardTitle>Payment Method</CardTitle>
+            <CardDescription>Select how you'd like to pay</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {paymentMethods && paymentMethods.length > 0 ? (
-              <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod}>
-                {paymentMethods.map((method) => (
-                  <div
-                    key={method.id}
-                    className="flex items-center space-x-2 p-4 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
-                  >
-                    <RadioGroupItem value={method.id.toString()} id={`method-${method.id}`} />
-                    <Label htmlFor={`method-${method.id}`} className="cursor-pointer flex-1">
-                      <div className="font-medium">{method.name}</div>
-                      {method.instructions && (
-                        <div className="text-sm text-muted-foreground">{method.instructions}</div>
-                      )}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No payment methods available for this plan
-              </div>
-            )}
-            
-            {paymentWidget && (
-              <>
-                <Separator />
-                <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod}>
-                  <div
-                    className="flex items-center space-x-2 p-4 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
-                  >
-                    <RadioGroupItem value="crypto-widget" id="crypto-widget" />
-                    <Label htmlFor="crypto-widget" className="cursor-pointer flex-1">
-                      <div className="flex items-center gap-2">
-                        <Bitcoin className="h-5 w-5 text-orange-500" />
-                        <div>
-                          <div className="font-medium">Cryptocurrency</div>
-                          <div className="text-sm text-muted-foreground">Pay with Bitcoin, Ethereum, and other cryptocurrencies</div>
-                        </div>
+          <CardContent>
+            <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod}>
+              {/* Crypto Widget Option */}
+              {paymentWidget && (
+                <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="crypto-widget" id="crypto-widget" />
+                  <Label htmlFor="crypto-widget" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/10">
+                        <Bitcoin className="h-5 w-5 text-amber-500" />
                       </div>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </>
-            )}
+                      <div>
+                        <div className="font-medium">Cryptocurrency</div>
+                        <div className="text-sm text-muted-foreground">Pay with Bitcoin, Ethereum, and more</div>
+                      </div>
+                    </div>
+                  </Label>
+                </div>
+              )}
+              
+              {/* Other Payment Methods */}
+              {paymentMethods?.map(method => (
+                <div 
+                  key={method.id}
+                  className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  <RadioGroupItem value={method.id.toString()} id={`method-${method.id}`} />
+                  <Label htmlFor={`method-${method.id}`} className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        {method.type === "card" && <CreditCard className="h-5 w-5 text-primary" />}
+                        {method.type === "paypal" && <Wallet className="h-5 w-5 text-blue-500" />}
+                        {method.type === "crypto" && <Bitcoin className="h-5 w-5 text-amber-500" />}
+                        {method.type === "custom" && <CreditCard className="h-5 w-5 text-primary" />}
+                      </div>
+                      <div>
+                        <div className="font-medium">{method.name}</div>
+                        {method.instructions && (
+                          <div className="text-sm text-muted-foreground line-clamp-1">
+                            {method.instructions}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
           </CardContent>
         </Card>
         
-        {/* Action Buttons */}
-        <div className="flex gap-4 mt-8">
-          <Link href="/plans" className="flex-1">
-            <Button variant="outline" className="w-full">
-              Cancel
-            </Button>
-          </Link>
-          <Button 
-            onClick={handleProceedToPayment}
-            disabled={!selectedMethod}
-            className="flex-1"
-          >
-            Proceed to Payment
-          </Button>
-        </div>
+        {/* Action Button */}
+        <Button 
+          className="w-full gradient-primary"
+          size="lg"
+          onClick={handleProceedToPayment}
+          disabled={!selectedMethod || createOrder.isPending}
+        >
+          {createOrder.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            `Proceed to Payment - $${price}`
+          )}
+        </Button>
       </div>
       
       {/* Credentials Dialog */}
