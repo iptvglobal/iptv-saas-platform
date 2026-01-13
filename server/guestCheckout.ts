@@ -4,7 +4,7 @@ import * as db from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { supabaseClient, supabaseAdmin } from "./supabase";
-import { sendOrderConfirmationEmail } from "./brevo";
+import { sendOrderConfirmationEmail, sendAdminNewOrderEmail } from "./brevo";
 
 /**
  * Register guest checkout routes
@@ -209,7 +209,7 @@ export function registerGuestCheckoutRoutes(app: Express) {
         // Don't fail the checkout if logging fails
       }
 
-      // Send order confirmation email
+      // Send order confirmation email to user and admin notification
       try {
         const plan = await db.getPlanById(planId);
         if (email) {
@@ -223,8 +223,18 @@ export function registerGuestCheckoutRoutes(app: Express) {
             paymentMethod: paymentMethodName || 'Not specified',
           });
         }
+        
+        // Send admin notification email
+        await sendAdminNewOrderEmail({
+          orderId: orderId,
+          userEmail: email,
+          planName: plan?.name || 'Unknown Plan',
+          connections: connections,
+          price: price,
+          paymentMethod: paymentMethodName || 'Not specified',
+        });
       } catch (emailError) {
-        console.error('[Guest Checkout] Failed to send order confirmation email:', emailError);
+        console.error('[Guest Checkout] Failed to send order emails:', emailError);
         // Don't fail the checkout if email fails
       }
 
