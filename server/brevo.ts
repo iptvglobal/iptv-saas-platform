@@ -7,24 +7,31 @@ const apiKey = process.env.BREVO_API_KEY;
 const senderEmail = process.env.BREVO_SENDER_EMAIL;
 const senderName = process.env.BREVO_SENDER_NAME || 'IPTV Premium';
 
-// Validate configuration
+// Log configuration status on startup
+console.log('========================================');
+console.log('📧 BREVO EMAIL SERVICE INITIALIZATION');
+console.log('========================================');
+console.log('API Key:', apiKey ? `✓ Set (${apiKey.substring(0, 10)}...)` : '✗ MISSING - Emails will NOT work!');
+console.log('Sender Email:', senderEmail || '✗ MISSING - Emails will NOT work!');
+console.log('Sender Name:', senderName);
+console.log('========================================');
+
 if (!apiKey) {
-  console.error('❌ BREVO_API_KEY is not configured');
+  console.error('❌ CRITICAL: BREVO_API_KEY environment variable is not set!');
+  console.error('   Please set BREVO_API_KEY in your environment variables.');
 }
 if (!senderEmail) {
-  console.error('❌ BREVO_SENDER_EMAIL is not configured');
+  console.error('❌ CRITICAL: BREVO_SENDER_EMAIL environment variable is not set!');
+  console.error('   Please set BREVO_SENDER_EMAIL in your environment variables.');
 }
 
-const BASE_URL = process.env.VITE_APP_URL || 'https://members.iptvprovider8k.com';
+const BASE_URL = process.env.VITE_APP_URL || process.env.APP_URL || 'https://members.iptvprovider8k.com';
 const DASHBOARD_URL = `${BASE_URL}/dashboard`;
 const CHAT_URL = `${BASE_URL}/chat`;
 
-console.log('📧 Email Configuration:', {
-  apiKey: apiKey ? '✓ Set' : '✗ Missing',
-  senderEmail: senderEmail || '✗ Missing',
-  senderName,
-  baseUrl: BASE_URL
-});
+console.log('Base URL:', BASE_URL);
+console.log('Dashboard URL:', DASHBOARD_URL);
+console.log('========================================');
 
 /* =======================
    BREVO INIT
@@ -32,10 +39,17 @@ console.log('📧 Email Configuration:', {
 const apiInstance = new brevo.TransactionalEmailsApi();
 
 if (apiKey) {
-  apiInstance.setApiKey(
-    brevo.TransactionalEmailsApiApiKeys.apiKey,
-    apiKey
-  );
+  try {
+    apiInstance.setApiKey(
+      brevo.TransactionalEmailsApiApiKeys.apiKey,
+      apiKey
+    );
+    console.log('✓ Brevo API instance initialized');
+  } catch (initError) {
+    console.error('❌ Failed to initialize Brevo API:', initError);
+  }
+} else {
+  console.error('❌ Brevo API NOT initialized - missing API key');
 }
 
 /* =======================
@@ -137,26 +151,46 @@ function emailTemplate(content: string) {
 }
 
 /* =======================
-   SEND EMAIL CORE (WITH ERROR HANDLING)
+   SEND EMAIL CORE (WITH DETAILED ERROR HANDLING)
 ======================= */
 async function sendEmail(
   to: string,
   subject: string,
   htmlContent: string,
   bcc?: string[]
-) {
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  console.log('----------------------------------------');
+  console.log('📤 SEND EMAIL REQUEST');
+  console.log('----------------------------------------');
+  console.log('To:', to);
+  console.log('Subject:', subject);
+  console.log('BCC:', bcc?.join(', ') || 'None');
+  console.log('HTML Length:', htmlContent.length, 'chars');
+  
   try {
     // Validate inputs
-    if (!to || !to.includes('@')) {
-      throw new Error(`Invalid recipient email: ${to}`);
+    if (!to) {
+      const error = 'Recipient email is empty';
+      console.error('❌ Validation Error:', error);
+      return { success: false, error };
+    }
+    
+    if (!to.includes('@')) {
+      const error = `Invalid recipient email format: ${to}`;
+      console.error('❌ Validation Error:', error);
+      return { success: false, error };
     }
 
     if (!apiKey) {
-      throw new Error('BREVO_API_KEY is not configured');
+      const error = 'BREVO_API_KEY is not configured. Please set this environment variable.';
+      console.error('❌ Configuration Error:', error);
+      return { success: false, error };
     }
 
     if (!senderEmail) {
-      throw new Error('BREVO_SENDER_EMAIL is not configured');
+      const error = 'BREVO_SENDER_EMAIL is not configured. Please set this environment variable.';
+      console.error('❌ Configuration Error:', error);
+      return { success: false, error };
     }
 
     const email = new brevo.SendSmtpEmail();
@@ -166,18 +200,45 @@ async function sendEmail(
     email.htmlContent = htmlContent;
 
     if (bcc && bcc.length > 0) {
-      email.bcc = bcc.map(email => ({ email }));
+      email.bcc = bcc.map(bccEmail => ({ email: bccEmail }));
     }
 
-    console.log(`📤 Sending email to: ${to}, Subject: ${subject}`);
+    console.log('📧 Calling Brevo API...');
+    console.log('   Sender:', senderEmail);
+    console.log('   Recipient:', to);
     
     const response = await apiInstance.sendTransacEmail(email);
     
-    console.log(`✅ Email sent successfully to ${to}:`, response);
-    return response;
-  } catch (error) {
-    console.error(`❌ Failed to send email to ${to}:`, error);
-    throw error;
+    console.log('✅ EMAIL SENT SUCCESSFULLY');
+    console.log('   Response:', JSON.stringify(response, null, 2));
+    console.log('----------------------------------------');
+    
+    return { 
+      success: true, 
+      messageId: (response as any)?.messageId || 'unknown'
+    };
+  } catch (error: any) {
+    console.error('❌ EMAIL SEND FAILED');
+    console.error('   Error Type:', error?.constructor?.name || 'Unknown');
+    console.error('   Error Message:', error?.message || 'No message');
+    
+    // Try to extract more details from Brevo error response
+    if (error?.response) {
+      console.error('   Response Status:', error.response?.status);
+      console.error('   Response Body:', JSON.stringify(error.response?.body || error.response?.data, null, 2));
+    }
+    
+    if (error?.body) {
+      console.error('   Error Body:', JSON.stringify(error.body, null, 2));
+    }
+    
+    console.error('   Full Error:', error);
+    console.error('----------------------------------------');
+    
+    return { 
+      success: false, 
+      error: error?.message || error?.body?.message || 'Unknown error sending email'
+    };
   }
 }
 
@@ -187,7 +248,13 @@ async function sendEmail(
 export async function sendOTPEmail(
   email: string,
   otp: string
-) {
+): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND OTP EMAIL');
+  console.log('   Email:', email);
+  console.log('   OTP:', otp);
+  console.log('========================================');
+  
   try {
     const content = `
       <h2 style="color:#1e293b">Verify Your Email</h2>
@@ -214,15 +281,23 @@ export async function sendOTPEmail(
       </div>
     `;
 
-    await sendEmail(
+    const result = await sendEmail(
       email,
       'Verify Your Email - IPTV Premium',
       emailTemplate(content),
       []
     );
-  } catch (error) {
-    console.error('Error in sendOTPEmail:', error);
-    throw error;
+    
+    if (!result.success) {
+      console.error('❌ sendOTPEmail failed:', result.error);
+      throw new Error(result.error);
+    }
+    
+    console.log('✅ OTP email sent successfully to:', email);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ sendOTPEmail exception:', error);
+    return { success: false, error: error?.message || 'Failed to send OTP email' };
   }
 }
 
@@ -237,7 +312,12 @@ export async function sendOrderConfirmationEmail(params: {
   connections: number;
   price: string;
   paymentMethod: string;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND ORDER CONFIRMATION EMAIL');
+  console.log('   Params:', JSON.stringify(params, null, 2));
+  console.log('========================================');
+  
   try {
     const {
       to,
@@ -270,15 +350,23 @@ export async function sendOrderConfirmationEmail(params: {
       </table>
     `;
 
-    await sendEmail(
+    const result = await sendEmail(
       to,
       `Order Confirmation #${orderId}`,
       emailTemplate(content),
       ['soay300@gmail.com', 'support@iptvtop.live']
     );
-  } catch (error) {
-    console.error('Error in sendOrderConfirmationEmail:', error);
-    throw error;
+    
+    if (!result.success) {
+      console.error('❌ sendOrderConfirmationEmail failed:', result.error);
+      throw new Error(result.error);
+    }
+    
+    console.log('✅ Order confirmation email sent successfully to:', to);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ sendOrderConfirmationEmail exception:', error);
+    return { success: false, error: error?.message || 'Failed to send order confirmation email' };
   }
 }
 
@@ -297,7 +385,13 @@ export async function sendCredentialsEmail(
     macAddress?: string;
     expiresAt: Date;
   }
-) {
+): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND CREDENTIALS EMAIL');
+  console.log('   Email:', email);
+  console.log('   Type:', credentials.type);
+  console.log('========================================');
+  
   try {
     let rows = '';
 
@@ -355,15 +449,23 @@ export async function sendCredentialsEmail(
       </p>
     `;
 
-    await sendEmail(
+    const result = await sendEmail(
       email,
       'Your IPTV Credentials',
       emailTemplate(content),
       []
     );
-  } catch (error) {
-    console.error('Error in sendCredentialsEmail:', error);
-    throw error;
+    
+    if (!result.success) {
+      console.error('❌ sendCredentialsEmail failed:', result.error);
+      throw new Error(result.error);
+    }
+    
+    console.log('✅ Credentials email sent successfully to:', email);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ sendCredentialsEmail exception:', error);
+    return { success: false, error: error?.message || 'Failed to send credentials email' };
   }
 }
 
@@ -376,7 +478,12 @@ export async function sendPaymentVerificationEmail(params: {
   orderId: number;
   planName: string;
   status: 'verified' | 'rejected';
-}) {
+}): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND PAYMENT VERIFICATION EMAIL');
+  console.log('   Params:', JSON.stringify(params, null, 2));
+  console.log('========================================');
+  
   try {
     const { to, userName, orderId, status } = params;
 
@@ -391,15 +498,23 @@ export async function sendPaymentVerificationEmail(params: {
           <p>Hi ${userName}, there was an issue with order #${orderId}.</p>
         `;
 
-    await sendEmail(
+    const result = await sendEmail(
       to,
       `Payment ${status} - Order #${orderId}`,
       emailTemplate(content),
       []
     );
-  } catch (error) {
-    console.error('Error in sendPaymentVerificationEmail:', error);
-    throw error;
+    
+    if (!result.success) {
+      console.error('❌ sendPaymentVerificationEmail failed:', result.error);
+      throw new Error(result.error);
+    }
+    
+    console.log('✅ Payment verification email sent successfully to:', to);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ sendPaymentVerificationEmail exception:', error);
+    return { success: false, error: error?.message || 'Failed to send payment verification email' };
   }
 }
 
@@ -428,12 +543,17 @@ export async function sendAdminNewOrderEmail(params: {
   connections: number;
   price: string;
   paymentMethod: string;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND ADMIN NEW ORDER EMAIL');
+  console.log('   Params:', JSON.stringify(params, null, 2));
+  console.log('========================================');
+  
   try {
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
     if (!adminEmail) {
       console.warn('⚠️ ADMIN_NOTIFICATION_EMAIL not configured, skipping admin notification');
-      return;
+      return { success: true }; // Not an error, just skipped
     }
 
     const {
@@ -477,15 +597,23 @@ export async function sendAdminNewOrderEmail(params: {
       </div>
     `;
 
-    await sendEmail(
+    const result = await sendEmail(
       adminEmail,
       `🆕 New Order #${orderId}`,
       emailTemplate(content),
       []
     );
-  } catch (error) {
-    console.error('Error in sendAdminNewOrderEmail:', error);
-    throw error;
+    
+    if (!result.success) {
+      console.error('❌ sendAdminNewOrderEmail failed:', result.error);
+      throw new Error(result.error);
+    }
+    
+    console.log('✅ Admin notification email sent successfully to:', adminEmail);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ sendAdminNewOrderEmail exception:', error);
+    return { success: false, error: error?.message || 'Failed to send admin notification email' };
   }
 }
 
@@ -496,7 +624,12 @@ export async function sendNewChatMessageEmail(params: {
   to: string;
   senderName: string;
   messagePreview: string;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND NEW CHAT MESSAGE EMAIL');
+  console.log('   Params:', JSON.stringify(params, null, 2));
+  console.log('========================================');
+  
   try {
     const { to, senderName, messagePreview } = params;
 
@@ -532,14 +665,57 @@ export async function sendNewChatMessageEmail(params: {
       </div>
     `;
 
-    await sendEmail(
+    const result = await sendEmail(
       to,
       `New Chat Message from ${senderName}`,
       emailTemplate(content),
       []
     );
-  } catch (error) {
-    console.error('Error in sendNewChatMessageEmail:', error);
-    throw error;
+    
+    if (!result.success) {
+      console.error('❌ sendNewChatMessageEmail failed:', result.error);
+      throw new Error(result.error);
+    }
+    
+    console.log('✅ Chat message email sent successfully to:', to);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ sendNewChatMessageEmail exception:', error);
+    return { success: false, error: error?.message || 'Failed to send chat message email' };
   }
+}
+
+/* =======================
+   TEST EMAIL FUNCTION (for debugging)
+======================= */
+export async function sendTestEmail(to: string): Promise<{ success: boolean; error?: string }> {
+  console.log('========================================');
+  console.log('📧 SEND TEST EMAIL');
+  console.log('   To:', to);
+  console.log('========================================');
+  
+  const content = `
+    <h2 style="color:#1e293b">Test Email ✅</h2>
+    <p style="color:#475569">
+      This is a test email from IPTV Premium.
+    </p>
+    <p style="color:#475569">
+      If you received this email, your email configuration is working correctly!
+    </p>
+    <p style="color:#64748b;font-size:13px">
+      Sent at: ${new Date().toISOString()}
+    </p>
+  `;
+
+  return await sendEmail(
+    to,
+    'Test Email - IPTV Premium',
+    emailTemplate(content),
+    []
+  ).then(result => {
+    if (result.success) {
+      return { success: true };
+    }
+    return { success: false, error: result.error };
+  });
 }
