@@ -5,7 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
-import { sendOrderConfirmationEmail, sendCredentialsEmail, sendPaymentVerificationEmail, sendNewChatMessageEmail, sendAdminNewOrderEmail, sendTestEmail } from "./brevo";
+import { sendOrderConfirmationEmail, sendCredentialsEmail, sendPaymentVerificationEmail, sendNewChatMessageEmail, sendAdminNewOrderEmail, sendTestEmail } from "./mailtrap";
 import { runEmailDiagnostic } from "./emailDiagnostic";
 
 // Admin procedure - only allows admin role
