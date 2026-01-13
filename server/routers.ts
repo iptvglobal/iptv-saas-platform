@@ -5,7 +5,8 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
-import { sendOrderConfirmationEmail, sendCredentialsEmail, sendPaymentVerificationEmail, sendNewChatMessageEmail } from "./brevo";
+import { sendOrderConfirmationEmail, sendCredentialsEmail, sendPaymentVerificationEmail, sendNewChatMessageEmail, sendAdminNewOrderEmail, sendTestEmail } from "./brevo";
+import { runEmailDiagnostic } from "./emailDiagnostic";
 
 // Admin procedure - only allows admin role
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -388,7 +389,7 @@ export const appRouter = router({
           },
         });
         
-        // Send order confirmation email
+        // Send order confirmation email to user
         try {
           const plan = await db.getPlanById(input.planId);
           if (ctx.user.email) {
@@ -402,8 +403,18 @@ export const appRouter = router({
               paymentMethod: input.paymentMethodName || 'Not specified',
             });
           }
+          
+          // Send admin notification email
+          await sendAdminNewOrderEmail({
+            orderId: orderId || 0,
+            userEmail: ctx.user.email || 'Unknown',
+            planName: plan?.name || 'Unknown Plan',
+            connections: input.connections,
+            price: input.price,
+            paymentMethod: input.paymentMethodName || 'Not specified',
+          });
         } catch (emailError) {
-          console.error('Failed to send order confirmation email:', emailError);
+          console.error('Failed to send order emails:', emailError);
           // Don't fail the order creation if email fails
         }
         
@@ -823,6 +834,20 @@ export const appRouter = router({
     stats: adminProcedure.query(async () => {
       return db.getDashboardStats();
     }),
+  }),
+
+  // ============ EMAIL DIAGNOSTICS ============
+  email: router({
+    diagnostic: adminProcedure.query(async () => {
+      return runEmailDiagnostic();
+    }),
+    
+    sendTest: adminProcedure
+      .input(z.object({ to: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const result = await sendTestEmail(input.to);
+        return result;
+      }),
   }),
 });
 
