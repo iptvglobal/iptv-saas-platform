@@ -376,11 +376,12 @@ export async function sendOrderConfirmationEmail(params: {
 export async function sendCredentialsEmail(
   email: string,
   credentials: {
-    type: 'xtream' | 'm3u' | 'portal' | 'mag' | 'enigma2';
+    type: 'xtream' | 'm3u' | 'portal' | 'mag' | 'enigma2' | 'combined';
     username?: string;
     password?: string;
     url?: string;
     m3uUrl?: string;
+    epgUrl?: string;
     portalUrl?: string;
     macAddress?: string;
     expiresAt: Date;
@@ -404,6 +405,7 @@ export async function sendCredentialsEmail(
     } else if (credentials.type === 'm3u') {
       rows = `
         <tr><td><strong>M3U URL</strong></td><td style="word-break:break-all">${credentials.m3uUrl}</td></tr>
+        ${credentials.epgUrl ? `<tr><td><strong>EPG URL</strong></td><td style="word-break:break-all">${credentials.epgUrl}</td></tr>` : ''}
       `;
     } else if (credentials.type === 'portal') {
       rows = `
@@ -419,6 +421,14 @@ export async function sendCredentialsEmail(
         <tr><td><strong>Server URL</strong></td><td style="word-break:break-all">${credentials.url}</td></tr>
         <tr><td><strong>Username</strong></td><td>${credentials.username}</td></tr>
         <tr><td><strong>Password</strong></td><td>${credentials.password}</td></tr>
+      `;
+    } else if (credentials.type === 'combined') {
+      // Combined type includes both Xtream and M3U credentials
+      rows = `
+        <tr><td><strong>Server URL</strong></td><td style="word-break:break-all">${credentials.url}</td></tr>
+        <tr><td><strong>Username</strong></td><td>${credentials.username}</td></tr>
+        <tr><td><strong>Password</strong></td><td>${credentials.password}</td></tr>
+        ${credentials.m3uUrl ? `<tr><td><strong>M3U URL</strong></td><td style="word-break:break-all">${credentials.m3uUrl}</td></tr>` : ''}
       `;
     }
 
