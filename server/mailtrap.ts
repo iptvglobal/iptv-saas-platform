@@ -1,686 +1,538 @@
 /**
- * Mailtrap Email Service
+ * Mailtrap Email Service - Using HTTP API (Transactional Stream)
+ * Replaces Brevo email service
  * 
- * This module handles all email sending through Mailtrap SMTP.
- * Mailtrap provides both sandbox testing and production transactional email.
+ * Uses Mailtrap's HTTP API instead of SMTP for better reliability
+ * API Docs: https://api-docs.mailtrap.io/
  */
 
-import nodemailer from 'nodemailer';
+import axios from 'axios';
 
-/* =======================
-   CONFIG
-======================= */
-const mailtrapHost = process.env.MAILTRAP_HOST || 'live.smtp.mailtrap.io';
-const mailtrapPort = parseInt(process.env.MAILTRAP_PORT || '587', 10);
-const mailtrapUser = process.env.MAILTRAP_USER;
-const mailtrapPassword = process.env.MAILTRAP_PASSWORD;
-const senderEmail = process.env.MAILTRAP_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'noreply@iptv.com';
-const senderName = process.env.MAILTRAP_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'IPTV Premium';
+// Initialize Mailtrap API configuration
+const mailtrapApiToken = process.env.MAILTRAP_PASSWORD; // Using PASSWORD as the API token
+const mailtrapSenderEmail = process.env.MAILTRAP_SENDER_EMAIL || 'noreply@yourdomain.com';
+const mailtrapSenderName = process.env.MAILTRAP_SENDER_NAME || 'IPTV Premium';
 
-// Log configuration status on startup
+// Mailtrap API endpoint
+const MAILTRAP_API_URL = 'https://send.api.mailtrap.io/api/send';
+
+// Verify configuration on startup
 console.log('========================================');
 console.log('📧 MAILTRAP EMAIL SERVICE INITIALIZATION');
 console.log('========================================');
-console.log('Host:', mailtrapHost);
-console.log('Port:', mailtrapPort);
-console.log('User:', mailtrapUser ? `✓ Set (${mailtrapUser.substring(0, 10)}...)` : '✗ MISSING');
-console.log('Password:', mailtrapPassword ? '✓ Set' : '✗ MISSING');
-console.log('Sender Email:', senderEmail);
-console.log('Sender Name:', senderName);
+console.log('API Endpoint: send.api.mailtrap.io');
+console.log('API Token: ' + (mailtrapApiToken ? '✓ Set' : '❌ NOT SET'));
+console.log('Sender Email: ' + mailtrapSenderEmail);
+console.log('Sender Name: ' + mailtrapSenderName);
 console.log('========================================');
 
-if (!mailtrapUser || !mailtrapPassword) {
-  console.error('❌ CRITICAL: MAILTRAP_USER and MAILTRAP_PASSWORD environment variables are not set!');
-  console.error('   Please set these in your environment variables.');
+if (!mailtrapApiToken) {
+  console.warn('⚠️  MAILTRAP_PASSWORD environment variable is not set. Email sending will fail.');
 }
 
-/* =======================
-   NODEMAILER TRANSPORTER
-======================= */
-const transporter = nodemailer.createTransport({
-  host: mailtrapHost,
-  port: mailtrapPort,
-  secure: mailtrapPort === 465, // true for 465, false for other ports
-  auth: {
-    user: mailtrapUser,
-    pass: mailtrapPassword,
-  },
-});
-
-// Verify connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Mailtrap connection failed:', error);
-  } else {
-    console.log('✓ Mailtrap SMTP connection verified');
-  }
-});
-
-/* =======================
-   EMAIL TEMPLATE HELPERS
-======================= */
-function dashboardButton() {
-  const baseUrl = process.env.VITE_APP_URL || process.env.APP_URL || 'https://members.iptvprovider8k.com';
-  return `
-    <div style="margin:32px 0;text-align:center">
-      <a href="${baseUrl}/dashboard" 
-         style="background:#4f46e5;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
-        View in Dashboard
-      </a>
-    </div>
-  `;
-}
-
-function viewCredentialsButton() {
-  const baseUrl = process.env.VITE_APP_URL || process.env.APP_URL || 'https://members.iptvprovider8k.com';
-  return `
-    <div style="margin:32px 0;text-align:center">
-      <a href="${baseUrl}/credentials" 
-         style="background:#4f46e5;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
-        View Your Credentials
-      </a>
-    </div>
-  `;
-}
-
-function emailTemplate(content: string) {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #1e293b; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 32px 20px; border-radius: 12px 12px 0 0; text-align: center; }
-          .body { background: #f8fafc; padding: 32px 20px; border-radius: 0 0 12px 12px; }
-          .footer { text-align: center; margin-top: 32px; font-size: 12px; color: #64748b; }
-          table { width: 100%; border-collapse: collapse; }
-          td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
-          strong { color: #1e293b; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0; font-size: 24px;">IPTV Premium</h1>
-          </div>
-          <div class="body">
-            ${content}
-          </div>
-          <div class="footer">
-            <p style="margin: 8px 0;">© ${new Date().getFullYear()} IPTV Premium. All rights reserved.</p>
-            <p style="margin: 8px 0; color: #94a3b8;">This is an automated email. Please do not reply to this address.</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-}
-
-/* =======================
-   CORE SEND EMAIL FUNCTION
-======================= */
+/**
+ * Send email via Mailtrap HTTP API
+ */
 async function sendEmail(
-  to: string,
+  toEmail: string,
   subject: string,
-  htmlContent: string
-): Promise<{ success: boolean; error?: string; messageId?: string }> {
-  console.log('----------------------------------------');
-  console.log('📤 SEND EMAIL REQUEST');
-  console.log('----------------------------------------');
-  console.log('To:', to);
-  console.log('Subject:', subject);
-  console.log('HTML Length:', htmlContent.length, 'chars');
-  
+  htmlContent: string,
+  textContent?: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    // Validate inputs
-    if (!to) {
-      const error = 'Recipient email is empty';
-      console.error('❌ Validation Error:', error);
-      return { success: false, error };
-    }
-    
-    if (!to.includes('@')) {
-      const error = `Invalid recipient email format: ${to}`;
-      console.error('❌ Validation Error:', error);
-      return { success: false, error };
+    if (!mailtrapApiToken) {
+      console.error('❌ MAILTRAP_PASSWORD not configured');
+      return { success: false, error: 'Email service not configured' };
     }
 
-    if (!mailtrapUser || !mailtrapPassword) {
-      const error = 'MAILTRAP_USER or MAILTRAP_PASSWORD is not configured.';
-      console.error('❌ Configuration Error:', error);
-      return { success: false, error };
-    }
+    console.log('----------------------------------------');
+    console.log('📤 SEND EMAIL REQUEST');
+    console.log('----------------------------------------');
+    console.log('To: ' + toEmail);
+    console.log('Subject: ' + subject);
+    console.log('HTML Length: ' + htmlContent.length + ' chars');
 
-    console.log('📧 Sending via Mailtrap SMTP...');
-    console.log('   From:', `${senderName} <${senderEmail}>`);
-    console.log('   To:', to);
-    
-    const info = await transporter.sendMail({
-      from: `${senderName} <${senderEmail}>`,
-      to: to,
+    const payload = {
+      from: {
+        email: mailtrapSenderEmail,
+        name: mailtrapSenderName,
+      },
+      to: [
+        {
+          email: toEmail,
+        },
+      ],
       subject: subject,
       html: htmlContent,
+      ...(textContent && { text: textContent }),
+      category: 'IPTV Premium',
+    };
+
+    console.log('📧 Sending via Mailtrap HTTP API...');
+    console.log('   From: ' + mailtrapSenderName + ' <' + mailtrapSenderEmail + '>');
+    console.log('   To: ' + toEmail);
+
+    const response = await axios.post(MAILTRAP_API_URL, payload, {
+      headers: {
+        Authorization: `Bearer ${mailtrapApiToken}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000, // 10 second timeout
     });
-    
-    console.log('✅ EMAIL SENT SUCCESSFULLY');
-    console.log('   Message ID:', info.messageId);
+
+    console.log('✅ Email sent successfully');
+    console.log('   Message ID: ' + response.data.success);
     console.log('----------------------------------------');
-    
-    return { 
-      success: true, 
-      messageId: info.messageId || 'unknown'
+
+    return {
+      success: true,
+      messageId: response.data.success,
     };
   } catch (error: any) {
     console.error('❌ EMAIL SEND FAILED');
-    console.error('   Error Type:', error?.constructor?.name || 'Unknown');
-    console.error('   Error Message:', error?.message || 'No message');
-    console.error('   Full Error:', error);
+    console.error('   Error Type: ' + error.constructor.name);
+    console.error('   Error Message: ' + error.message);
+
+    if (error.response) {
+      console.error('   Status: ' + error.response.status);
+      console.error('   Response: ' + JSON.stringify(error.response.data));
+    }
+
+    console.error('   Full Error: ' + error.message);
     console.error('----------------------------------------');
-    
-    return { 
-      success: false, 
-      error: error?.message || 'Unknown error sending email'
+
+    return {
+      success: false,
+      error: error.message || 'Failed to send email',
     };
   }
 }
 
-/* =======================
-   OTP EMAIL
-======================= */
-export async function sendOTPEmail(
-  email: string,
-  otp: string
-): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND OTP EMAIL');
-  console.log('   Email:', email);
-  console.log('   OTP:', otp);
-  console.log('========================================');
-  
+/**
+ * Send OTP verification email
+ */
+export async function sendOTPEmail(email: string, otp: string): Promise<void> {
   try {
-    const content = `
-      <h2 style="color:#1e293b">Your OTP Code 🔐</h2>
-      <p style="color:#475569">
-        Use this code to verify your email address. This code will expire in 10 minutes.
-      </p>
+    console.log('========================================');
+    console.log('📧 SEND OTP EMAIL');
+    console.log('   Email: ' + email);
+    console.log('   OTP: ' + otp);
+    console.log('========================================');
 
-      <div style="margin:32px 0;text-align:center;background:#f1f5f9;padding:24px;border-radius:12px">
-        <div style="font-size:48px;font-weight:700;color:#4f46e5;letter-spacing:8px;font-family:monospace">
-          ${otp}
-        </div>
-      </div>
-
-      <p style="margin-top:24px;font-size:13px;color:#64748b">
-        If you didn't request this code, please ignore this email.
-      </p>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .content { text-align: center; }
+            .otp-box { background-color: #f0f0f0; padding: 20px; margin: 20px 0; border-radius: 8px; }
+            .otp-code { font-size: 32px; font-weight: bold; color: #007bff; letter-spacing: 5px; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>IPTV Premium</h1>
+            </div>
+            <div class="content">
+              <p>Hello,</p>
+              <p>Your email verification code is:</p>
+              <div class="otp-box">
+                <div class="otp-code">${otp}</div>
+              </div>
+              <p>This code will expire in 10 minutes.</p>
+              <p>If you didn't request this code, please ignore this email.</p>
+            </div>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
+
+    const textContent = `Your IPTV Premium verification code is: ${otp}\n\nThis code will expire in 10 minutes.`;
 
     const result = await sendEmail(
       email,
-      'Your OTP Verification Code',
-      emailTemplate(content)
+      'Your IPTV Premium Verification Code',
+      htmlContent,
+      textContent
     );
-    
+
     if (!result.success) {
-      console.error('❌ sendOTPEmail failed:', result.error);
-      throw new Error(result.error);
+      throw new Error(result.error || 'Failed to send OTP email');
     }
-    
-    console.log('✅ OTP email sent successfully to:', email);
-    return { success: true };
   } catch (error: any) {
-    console.error('❌ sendOTPEmail exception:', error);
-    return { success: false, error: error?.message || 'Failed to send OTP email' };
+    console.error('❌ sendOTPEmail failed: ' + error.message);
+    throw error;
   }
 }
 
-/* =======================
-   ORDER CONFIRMATION EMAIL
-======================= */
-export async function sendOrderConfirmationEmail(data: {
-  to: string;
-  userName: string;
-  orderId: number;
-  planName: string;
-  connections: number;
-  price: string;
-  paymentMethod: string;
-}): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND ORDER CONFIRMATION EMAIL');
-  console.log('   Email:', data.to);
-  console.log('   Order ID:', data.orderId);
-  console.log('========================================');
-  
+/**
+ * Send order confirmation email
+ */
+export async function sendOrderConfirmationEmail(
+  email: string,
+  orderData: {
+    orderId: string;
+    amount: number;
+    plan: string;
+    duration: string;
+  }
+): Promise<void> {
   try {
-    const content = `
-      <h2 style="color:#1e293b">Order Confirmation ✅</h2>
-      <p style="color:#475569">
-        Hi ${data.userName},
-      </p>
-      <p style="color:#475569">
-        Thank you for your order! We've received your subscription request and it's being processed.
-      </p>
-
-      ${dashboardButton()}
-
-      <table width="100%" cellpadding="12"
-        style="margin-top:24px;
-               background:#f8fafc;
-               border-radius:12px;
-               border-collapse:collapse">
-        <tr>
-          <td><strong>Order ID</strong></td>
-          <td>#${data.orderId}</td>
-        </tr>
-        <tr>
-          <td><strong>Plan</strong></td>
-          <td>${data.planName}</td>
-        </tr>
-        <tr>
-          <td><strong>Connections</strong></td>
-          <td>${data.connections}</td>
-        </tr>
-        <tr>
-          <td><strong>Price</strong></td>
-          <td style="color:#4f46e5;font-weight:700">${data.price}</td>
-        </tr>
-        <tr>
-          <td><strong>Payment Method</strong></td>
-          <td>${data.paymentMethod}</td>
-        </tr>
-      </table>
-
-      <p style="margin-top:24px;font-size:13px;color:#64748b">
-        Your order is pending verification. You'll receive another email once it's confirmed.
-      </p>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .order-details { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
+            .detail-label { font-weight: bold; color: #333; }
+            .detail-value { color: #666; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Order Confirmation</h1>
+            </div>
+            <p>Hello,</p>
+            <p>Thank you for your order! Here are your order details:</p>
+            <div class="order-details">
+              <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span class="detail-value">${orderData.orderId}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Plan:</span>
+                <span class="detail-value">${orderData.plan}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Duration:</span>
+                <span class="detail-value">${orderData.duration}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value">$${orderData.amount}</span>
+              </div>
+            </div>
+            <p>Your order has been received and is being processed. You will receive your credentials shortly.</p>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
 
-    const result = await sendEmail(
-      data.to,
-      'Order Confirmation - IPTV Premium',
-      emailTemplate(content)
-    );
-    
-    if (!result.success) {
-      console.error('❌ sendOrderConfirmationEmail failed:', result.error);
-      throw new Error(result.error);
-    }
-    
-    console.log('✅ Order confirmation email sent successfully to:', data.to);
-    return { success: true };
+    await sendEmail(email, 'Order Confirmation - IPTV Premium', htmlContent);
   } catch (error: any) {
-    console.error('❌ sendOrderConfirmationEmail exception:', error);
-    return { success: false, error: error?.message || 'Failed to send order confirmation email' };
+    console.error('❌ sendOrderConfirmationEmail failed: ' + error.message);
+    throw error;
   }
 }
 
-/* =======================
-   ADMIN NEW ORDER EMAIL
-======================= */
-export async function sendAdminNewOrderEmail(data: {
-  orderId: number;
-  userEmail: string;
-  planName: string;
-  connections: number;
-  price: string;
-  paymentMethod: string;
-}): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND ADMIN NEW ORDER EMAIL');
-  console.log('   Order ID:', data.orderId);
-  console.log('   User Email:', data.userEmail);
-  console.log('========================================');
-  
-  try {
-    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.BREVO_SENDER_EMAIL || senderEmail;
-    
-    if (!adminEmail) {
-      console.warn('⚠️  No admin email configured, skipping admin notification');
-      return { success: true };
-    }
-
-    const content = `
-      <h2 style="color:#1e293b">New Order Received 📦</h2>
-      <p style="color:#475569">
-        A new order has been placed on your IPTV platform.
-      </p>
-
-      ${dashboardButton()}
-
-      <table width="100%" cellpadding="12"
-        style="margin-top:24px;
-               background:#f8fafc;
-               border-radius:12px;
-               border-collapse:collapse">
-        <tr>
-          <td><strong>Order ID</strong></td>
-          <td>#${data.orderId}</td>
-        </tr>
-        <tr>
-          <td><strong>Customer Email</strong></td>
-          <td>${data.userEmail}</td>
-        </tr>
-        <tr>
-          <td><strong>Plan</strong></td>
-          <td>${data.planName}</td>
-        </tr>
-        <tr>
-          <td><strong>Connections</strong></td>
-          <td>${data.connections}</td>
-        </tr>
-        <tr>
-          <td><strong>Price</strong></td>
-          <td style="color:#4f46e5;font-weight:700">${data.price}</td>
-        </tr>
-        <tr>
-          <td><strong>Payment Method</strong></td>
-          <td>${data.paymentMethod}</td>
-        </tr>
-      </table>
-
-      <p style="margin-top:24px;font-size:13px;color:#64748b">
-        Please review and verify this order in your admin dashboard.
-      </p>
-    `;
-
-    const result = await sendEmail(
-      adminEmail,
-      `New Order #${data.orderId} - IPTV Premium`,
-      emailTemplate(content)
-    );
-    
-    if (!result.success) {
-      console.error('❌ sendAdminNewOrderEmail failed:', result.error);
-      // Don't throw, just log - admin notification failure shouldn't block order creation
-      return { success: false, error: result.error };
-    }
-    
-    console.log('✅ Admin notification email sent successfully');
-    return { success: true };
-  } catch (error: any) {
-    console.error('❌ sendAdminNewOrderEmail exception:', error);
-    // Don't throw, just log - admin notification failure shouldn't block order creation
-    return { success: false, error: error?.message || 'Failed to send admin notification email' };
-  }
-}
-
-/* =======================
-   CREDENTIALS EMAIL
-======================= */
+/**
+ * Send credentials email
+ */
 export async function sendCredentialsEmail(
   email: string,
   credentials: {
-    type: 'xtream' | 'm3u' | 'portal' | 'mag' | 'enigma2' | 'combined';
-    username?: string;
-    password?: string;
-    url?: string;
-    m3uUrl?: string;
-    epgUrl?: string;
-    portalUrl?: string;
-    macAddress?: string;
-    expiresAt: Date;
+    username: string;
+    password: string;
+    expiryDate: string;
   }
-): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND CREDENTIALS EMAIL');
-  console.log('   Email:', email);
-  console.log('   Type:', credentials.type);
-  console.log('========================================');
-  
+): Promise<void> {
   try {
-    let rows = '';
-
-    if (credentials.type === 'xtream') {
-      rows = `
-        <tr><td><strong>Server URL</strong></td><td style="word-break:break-all">${credentials.url}</td></tr>
-        <tr><td><strong>Username</strong></td><td>${credentials.username}</td></tr>
-        <tr><td><strong>Password</strong></td><td>${credentials.password}</td></tr>
-      `;
-    } else if (credentials.type === 'm3u') {
-      rows = `
-        <tr><td><strong>M3U URL</strong></td><td style="word-break:break-all">${credentials.m3uUrl}</td></tr>
-        ${credentials.epgUrl ? `<tr><td><strong>EPG URL</strong></td><td style="word-break:break-all">${credentials.epgUrl}</td></tr>` : ''}
-      `;
-    } else if (credentials.type === 'portal') {
-      rows = `
-        <tr><td><strong>Portal URL</strong></td><td style="word-break:break-all">${credentials.portalUrl}</td></tr>
-        <tr><td><strong>MAC Address</strong></td><td>${credentials.macAddress}</td></tr>
-      `;
-    } else if (credentials.type === 'mag') {
-      rows = `
-        <tr><td><strong>MAC Address</strong></td><td>${credentials.macAddress}</td></tr>
-      `;
-    } else if (credentials.type === 'enigma2') {
-      rows = `
-        <tr><td><strong>Server URL</strong></td><td style="word-break:break-all">${credentials.url}</td></tr>
-        <tr><td><strong>Username</strong></td><td>${credentials.username}</td></tr>
-        <tr><td><strong>Password</strong></td><td>${credentials.password}</td></tr>
-      `;
-    } else if (credentials.type === 'combined') {
-      // Combined type includes both Xtream and M3U credentials
-      rows = `
-        <tr><td><strong>Server URL</strong></td><td style="word-break:break-all">${credentials.url}</td></tr>
-        <tr><td><strong>Username</strong></td><td>${credentials.username}</td></tr>
-        <tr><td><strong>Password</strong></td><td>${credentials.password}</td></tr>
-        ${credentials.m3uUrl ? `<tr><td><strong>M3U URL</strong></td><td style="word-break:break-all">${credentials.m3uUrl}</td></tr>` : ''}
-      `;
-    }
-
-    const content = `
-      <h2 style="color:#1e293b">Your IPTV Credentials 🔑</h2>
-      <p style="color:#475569">
-        Your subscription is active. Use the details below or view them securely in your dashboard.
-      </p>
-
-      ${viewCredentialsButton()}
-
-      <table width="100%" cellpadding="12"
-        style="margin-top:24px;
-               background:#f8fafc;
-               border-radius:12px;
-               border-collapse:collapse">
-        ${rows}
-        <tr>
-          <td><strong>Expires</strong></td>
-          <td style="color:#4f46e5;font-weight:700">
-            ${credentials.expiresAt.toDateString()}
-          </td>
-        </tr>
-      </table>
-
-      <p style="margin-top:16px;font-size:13px;color:#64748b">
-        ⚠️ Do not share your credentials with anyone.
-      </p>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .credentials-box { background-color: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .credential-row { margin: 10px 0; }
+            .credential-label { font-weight: bold; color: #333; }
+            .credential-value { color: #007bff; font-family: monospace; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Your IPTV Premium Credentials</h1>
+            </div>
+            <p>Hello,</p>
+            <p>Your order has been approved! Here are your IPTV credentials:</p>
+            <div class="credentials-box">
+              <div class="credential-row">
+                <div class="credential-label">Username:</div>
+                <div class="credential-value">${credentials.username}</div>
+              </div>
+              <div class="credential-row">
+                <div class="credential-label">Password:</div>
+                <div class="credential-value">${credentials.password}</div>
+              </div>
+              <div class="credential-row">
+                <div class="credential-label">Expiry Date:</div>
+                <div class="credential-value">${credentials.expiryDate}</div>
+              </div>
+            </div>
+            <p>You can now log in to IPTV Premium and start streaming!</p>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
 
-    const result = await sendEmail(
-      email,
-      'Your IPTV Credentials',
-      emailTemplate(content)
-    );
-    
-    if (!result.success) {
-      console.error('❌ sendCredentialsEmail failed:', result.error);
-      throw new Error(result.error);
-    }
-    
-    console.log('✅ Credentials email sent successfully to:', email);
-    return { success: true };
+    await sendEmail(email, 'Your IPTV Premium Credentials', htmlContent);
   } catch (error: any) {
-    console.error('❌ sendCredentialsEmail exception:', error);
-    return { success: false, error: error?.message || 'Failed to send credentials email' };
+    console.error('❌ sendCredentialsEmail failed: ' + error.message);
+    throw error;
   }
 }
 
-/* =======================
-   PAYMENT VERIFICATION EMAIL
-======================= */
-export async function sendPaymentVerificationEmail(data: {
-  to: string;
-  userName: string;
-  orderId: number;
-  status: 'verified' | 'rejected';
-  reason?: string;
-}): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND PAYMENT VERIFICATION EMAIL');
-  console.log('   Email:', data.to);
-  console.log('   Status:', data.status);
-  console.log('========================================');
-  
+/**
+ * Send payment verification email
+ */
+export async function sendPaymentVerificationEmail(
+  email: string,
+  paymentData: {
+    transactionId: string;
+    amount: number;
+    date: string;
+  }
+): Promise<void> {
   try {
-    const isVerified = data.status === 'verified';
-    const statusColor = isVerified ? '#10b981' : '#ef4444';
-    const statusText = isVerified ? 'VERIFIED ✅' : 'REJECTED ❌';
-
-    const content = `
-      <h2 style="color:#1e293b">Payment ${statusText}</h2>
-      <p style="color:#475569">
-        Hi ${data.userName},
-      </p>
-      <p style="color:#475569">
-        Your payment for order #${data.orderId} has been ${data.status}.
-      </p>
-
-      ${isVerified ? `
-        <div style="margin:24px 0;padding:16px;background:#ecfdf5;border-left:4px solid #10b981;border-radius:8px">
-          <p style="color:#047857;margin:0">
-            <strong>Great news!</strong> Your subscription is now active. You can view your credentials in your dashboard.
-          </p>
-        </div>
-        ${dashboardButton()}
-      ` : `
-        <div style="margin:24px 0;padding:16px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:8px">
-          <p style="color:#991b1b;margin:0">
-            <strong>Payment Rejected:</strong> ${data.reason || 'Please contact support for more information.'}
-          </p>
-        </div>
-      `}
-
-      <p style="margin-top:24px;font-size:13px;color:#64748b">
-        If you have any questions, please contact our support team.
-      </p>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .payment-box { background-color: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
+            .detail-label { font-weight: bold; color: #333; }
+            .detail-value { color: #666; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Payment Received</h1>
+            </div>
+            <p>Hello,</p>
+            <p>We have received your payment. Here are the details:</p>
+            <div class="payment-box">
+              <div class="detail-row">
+                <span class="detail-label">Transaction ID:</span>
+                <span class="detail-value">${paymentData.transactionId}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value">$${paymentData.amount}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Date:</span>
+                <span class="detail-value">${paymentData.date}</span>
+              </div>
+            </div>
+            <p>Thank you for your purchase!</p>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
 
-    const result = await sendEmail(
-      data.to,
-      `Payment ${statusText} - Order #${data.orderId}`,
-      emailTemplate(content)
-    );
-    
-    if (!result.success) {
-      console.error('❌ sendPaymentVerificationEmail failed:', result.error);
-      throw new Error(result.error);
-    }
-    
-    console.log('✅ Payment verification email sent successfully to:', data.to);
-    return { success: true };
+    await sendEmail(email, 'Payment Verification - IPTV Premium', htmlContent);
   } catch (error: any) {
-    console.error('❌ sendPaymentVerificationEmail exception:', error);
-    return { success: false, error: error?.message || 'Failed to send payment verification email' };
+    console.error('❌ sendPaymentVerificationEmail failed: ' + error.message);
+    throw error;
   }
 }
 
-/* =======================
-   NEW CHAT MESSAGE EMAIL
-======================= */
-export async function sendNewChatMessageEmail(data: {
-  to: string;
-  userName: string;
-  message: string;
-}): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND NEW CHAT MESSAGE EMAIL');
-  console.log('   Email:', data.to);
-  console.log('========================================');
-  
+/**
+ * Send new chat message notification
+ */
+export async function sendNewChatMessageEmail(
+  email: string,
+  senderName: string,
+  message: string
+): Promise<void> {
   try {
-    const baseUrl = process.env.VITE_APP_URL || process.env.APP_URL || 'https://members.iptvprovider8k.com';
-    
-    const content = `
-      <h2 style="color:#1e293b">New Message 💬</h2>
-      <p style="color:#475569">
-        Hi ${data.userName},
-      </p>
-      <p style="color:#475569">
-        You have a new message from our support team.
-      </p>
-
-      <div style="margin:24px 0;padding:16px;background:#f1f5f9;border-left:4px solid #4f46e5;border-radius:8px">
-        <p style="color:#1e293b;margin:0;font-style:italic">
-          "${data.message}"
-        </p>
-      </div>
-
-      <div style="margin:32px 0;text-align:center">
-        <a href="${baseUrl}/chat" 
-           style="background:#4f46e5;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
-          View Message
-        </a>
-      </div>
-
-      <p style="margin-top:24px;font-size:13px;color:#64748b">
-        Reply to this message in your dashboard chat.
-      </p>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .message-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007bff; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>New Message</h1>
+            </div>
+            <p>Hello,</p>
+            <p><strong>${senderName}</strong> sent you a new message:</p>
+            <div class="message-box">
+              <p>${message}</p>
+            </div>
+            <p>Log in to your account to reply.</p>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
 
-    const result = await sendEmail(
-      data.to,
-      'New Support Message - IPTV Premium',
-      emailTemplate(content)
-    );
-    
-    if (!result.success) {
-      console.error('❌ sendNewChatMessageEmail failed:', result.error);
-      throw new Error(result.error);
-    }
-    
-    console.log('✅ Chat message email sent successfully to:', data.to);
-    return { success: true };
+    await sendEmail(email, 'New Message - IPTV Premium', htmlContent);
   } catch (error: any) {
-    console.error('❌ sendNewChatMessageEmail exception:', error);
-    return { success: false, error: error?.message || 'Failed to send chat message email' };
+    console.error('❌ sendNewChatMessageEmail failed: ' + error.message);
+    throw error;
   }
 }
 
-/* =======================
-   TEST EMAIL
-======================= */
-export async function sendTestEmail(to: string): Promise<{ success: boolean; error?: string }> {
-  console.log('========================================');
-  console.log('📧 SEND TEST EMAIL');
-  console.log('   Email:', to);
-  console.log('========================================');
-  
+/**
+ * Send admin notification for new order
+ */
+export async function sendAdminNewOrderEmail(
+  adminEmail: string,
+  orderData: {
+    orderId: string;
+    customerEmail: string;
+    plan: string;
+    amount: number;
+  }
+): Promise<void> {
   try {
-    const content = `
-      <h2 style="color:#1e293b">Test Email ✅</h2>
-      <p style="color:#475569">
-        This is a test email from your IPTV SaaS platform.
-      </p>
-      <p style="color:#475569">
-        If you received this email, your email configuration is working correctly!
-      </p>
-      <div style="margin:24px 0;padding:16px;background:#ecfdf5;border-radius:8px">
-        <p style="color:#047857;margin:0">
-          <strong>Configuration Status:</strong> ✅ All systems operational
-        </p>
-      </div>
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .order-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .detail-row { display: flex; justify-content: space-between; margin: 10px 0; }
+            .detail-label { font-weight: bold; color: #333; }
+            .detail-value { color: #666; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>New Order Received</h1>
+            </div>
+            <p>A new order has been received:</p>
+            <div class="order-box">
+              <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span class="detail-value">${orderData.orderId}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Customer Email:</span>
+                <span class="detail-value">${orderData.customerEmail}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Plan:</span>
+                <span class="detail-value">${orderData.plan}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value">$${orderData.amount}</span>
+              </div>
+            </div>
+            <p>Please review and process this order.</p>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
     `;
 
-    const result = await sendEmail(
-      to,
-      'Test Email - IPTV Premium',
-      emailTemplate(content)
-    );
-    
-    return result;
+    await sendEmail(adminEmail, 'New Order - IPTV Premium', htmlContent);
   } catch (error: any) {
-    console.error('❌ sendTestEmail exception:', error);
-    return { success: false, error: error?.message || 'Failed to send test email' };
+    console.error('❌ sendAdminNewOrderEmail failed: ' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Send test email
+ */
+export async function sendTestEmail(email: string): Promise<void> {
+  try {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #333; margin: 0; }
+            .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Test Email</h1>
+            </div>
+            <p>This is a test email from IPTV Premium.</p>
+            <p>If you received this email, the email service is working correctly!</p>
+            <div class="footer">
+              <p>&copy; 2026 IPTV Premium. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await sendEmail(email, 'Test Email - IPTV Premium', htmlContent);
+  } catch (error: any) {
+    console.error('❌ sendTestEmail failed: ' + error.message);
+    throw error;
   }
 }
