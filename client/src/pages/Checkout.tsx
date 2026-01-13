@@ -238,7 +238,6 @@ export default function Checkout() {
             {paymentWidget && (
               <>
                 <Separator />
-                {/* FIX: Wrap the standalone RadioGroupItem in a RadioGroup */}
                 <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod}>
                   <div
                     className="flex items-center space-x-2 p-4 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
@@ -407,34 +406,34 @@ export default function Checkout() {
           )}
           
           <Button onClick={handleConfirmPayment} className="w-full">
-            I've Completed Payment
+            I Have Paid
           </Button>
         </DialogContent>
       </Dialog>
       
-      {/* Confirmation Dialog */}
+      {/* Confirm Payment Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Payment Confirmation</DialogTitle>
-            <DialogDescription>
-              Verifying your payment...
-            </DialogDescription>
+            <DialogTitle>Payment Confirmed</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="flex justify-center">
-              <CheckCircle className="h-12 w-12 text-green-500" />
+          <div className="space-y-4 py-4 text-center">
+            <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
+            <div>
+              <div className="font-semibold mb-2">Payment Received</div>
+              <p className="text-sm text-muted-foreground">
+                Your order has been received and is pending verification. You will receive an email confirmation shortly.
+              </p>
             </div>
             
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-2">
-                Your payment has been received and is being verified.
-              </p>
-              <p className="text-sm font-medium">
-                Redirecting in {countdown} seconds...
-              </p>
-            </div>
+            {isProcessing && (
+              <div className="p-4 rounded-lg bg-blue-500/10">
+                <p className="text-sm">
+                  Redirecting in {countdown} seconds...
+                </p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
