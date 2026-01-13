@@ -34,6 +34,7 @@ import {
   MessageCircle,
   FileText,
   Mail,
+  Settings,
   LogOut,
   PanelLeft,
   Moon,
@@ -56,6 +57,7 @@ const adminMenuItems = [
   { icon: MessageCircle, label: "Chat", path: "/admin/chat" },
   { icon: FileText, label: "Activity Logs", path: "/admin/logs" },
   { icon: Mail, label: "Email Templates", path: "/admin/email-templates" },
+  { icon: Settings, label: "Email Settings", path: "/admin/email-settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "admin-sidebar-width";
