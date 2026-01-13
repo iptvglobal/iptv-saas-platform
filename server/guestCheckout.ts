@@ -4,7 +4,7 @@ import * as db from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { supabaseClient, supabaseAdmin } from "./supabase";
-import { sendOrderConfirmationEmail, sendAdminNewOrderEmail } from "./brevo";
+import { sendOrderConfirmationEmail, sendAdminNewOrderEmail } from "./mailtrap";
 
 /**
  * Register guest checkout routes
