@@ -73,7 +73,10 @@ export default function Checkout() {
   }, [isProcessing, countdown]);
   
   const validateMacAddress = (mac: string) => {
-    const cleanMac = mac.replace(/[:-]/g, '').toUpperCase();
+    // Improved MAC address validation:
+    // 1. Remove all non-hex characters (colons, hyphens, spaces, etc.)
+    const cleanMac = mac.replace(/[^0-9A-F]/gi, '').toUpperCase();
+    // 2. Check if it's exactly 12 hex characters
     return /^[0-9A-F]{12}$/.test(cleanMac);
   };
   
@@ -89,7 +92,7 @@ export default function Checkout() {
     }
     
     if (selectedCredentialsType === "mag" && !validateMacAddress(macAddress)) {
-      toast.error("Please enter a valid MAC address (format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX)");
+      toast.error("Invalid MAC address. Please use format XX:XX:XX:XX:XX:XX");
       return;
     }
     
@@ -275,172 +278,192 @@ export default function Checkout() {
               Processing...
             </>
           ) : (
-            `Proceed to Payment - $${price}`
+            "Proceed to Payment"
           )}
         </Button>
-      </div>
-      
-      {/* Credentials Dialog */}
-      <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Credentials Type</DialogTitle>
-            <DialogDescription>
-              Choose how you want to receive your IPTV credentials
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <RadioGroup value={selectedCredentialsType} onValueChange={setSelectedCredentialsType}>
-              <div className="flex items-center space-x-2 p-3 rounded-lg border cursor-pointer hover:bg-accent">
-                <RadioGroupItem value="xtream" id="xtream" />
-                <Label htmlFor="xtream" className="cursor-pointer flex-1">
-                  <div className="font-medium">Xtream Codes API</div>
-                  <div className="text-xs text-muted-foreground">For developers and advanced users</div>
-                </Label>
-              </div>
+        
+        {/* Credentials Dialog */}
+        <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Select Credentials Type</DialogTitle>
+              <DialogDescription>
+                Choose how you want to access your IPTV service
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <RadioGroup value={selectedCredentialsType} onValueChange={setSelectedCredentialsType}>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="xtream" id="xtream" />
+                  <Label htmlFor="xtream" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Xtream Codes</div>
+                    <div className="text-xs text-muted-foreground">Username, Password & Server URL</div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="m3u" id="m3u" />
+                  <Label htmlFor="m3u" className="flex-1 cursor-pointer">
+                    <div className="font-medium">M3U Playlist</div>
+                    <div className="text-xs text-muted-foreground">Playlist URL & EPG URL</div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="mag" id="mag" />
+                  <Label htmlFor="mag" className="flex-1 cursor-pointer">
+                    <div className="font-medium">MAG / Portal</div>
+                    <div className="text-xs text-muted-foreground">For MAG boxes (requires MAC address)</div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="enigma2" id="enigma2" />
+                  <Label htmlFor="enigma2" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Enigma2</div>
+                    <div className="text-xs text-muted-foreground">For Enigma2 devices</div>
+                  </Label>
+                </div>
+              </RadioGroup>
               
-              <div className="flex items-center space-x-2 p-3 rounded-lg border cursor-pointer hover:bg-accent">
-                <RadioGroupItem value="mag" id="mag" />
-                <Label htmlFor="mag" className="cursor-pointer flex-1">
-                  <div className="font-medium">MAG Portal</div>
-                  <div className="text-xs text-muted-foreground">For MAG boxes (requires MAC address)</div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2 p-3 rounded-lg border cursor-pointer hover:bg-accent">
-                <RadioGroupItem value="m3u" id="m3u" />
-                <Label htmlFor="m3u" className="cursor-pointer flex-1">
-                  <div className="font-medium">M3U / M3U8 Playlist</div>
-                  <div className="text-xs text-muted-foreground">For VLC, Kodi, and other players</div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2 p-3 rounded-lg border cursor-pointer hover:bg-accent">
-                <RadioGroupItem value="enigma2" id="enigma2" />
-                <Label htmlFor="enigma2" className="cursor-pointer flex-1">
-                  <div className="font-medium">Enigma2 (E2) / Dreambox</div>
-                  <div className="text-xs text-muted-foreground">For Dreambox receivers</div>
-                </Label>
-              </div>
-            </RadioGroup>
+              {selectedCredentialsType === "mag" && (
+                <div className="space-y-2 mt-2">
+                  <Label htmlFor="mac">MAC Address</Label>
+                  <input
+                    id="mac"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="XX:XX:XX:XX:XX:XX"
+                    value={macAddress}
+                    onChange={(e) => setMacAddress(e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
+                  </p>
+                </div>
+              )}
+            </div>
+            <Button onClick={handleCredentialsSelection} className="w-full gradient-primary">
+              Confirm & Continue
+            </Button>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Payment Instructions Dialog */}
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Payment Instructions</DialogTitle>
+              <DialogDescription>
+                Please follow these steps to complete your payment
+              </DialogDescription>
+            </DialogHeader>
             
-            {selectedCredentialsType === "mag" && (
-              <div className="space-y-2">
-                <Label htmlFor="mac">MAC Address</Label>
-                <input
-                  id="mac"
-                  type="text"
-                  placeholder="XX:XX:XX:XX:XX:XX"
-                  value={macAddress}
-                  onChange={(e) => setMacAddress(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
+            <div className="space-y-6 py-4">
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                <h4 className="font-semibold text-primary mb-2">Amount to Pay: ${price}</h4>
+                <p className="text-sm text-muted-foreground">
+                  Please send the exact amount to ensure your order is processed quickly.
                 </p>
               </div>
-            )}
-          </div>
-          
-          <Button onClick={handleCredentialsSelection} className="w-full">
-            Continue
-          </Button>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Payment Instructions</DialogTitle>
-            <DialogDescription>
-              Order #{orderId}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedPaymentMethod && (
-            <div className="space-y-4 py-4">
-              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <div className="font-semibold mb-2">{selectedPaymentMethod.name}</div>
-                {selectedPaymentMethod.instructions && (
-                  <div className="text-sm whitespace-pre-wrap">{selectedPaymentMethod.instructions}</div>
-                )}
-                {selectedPaymentMethod.paymentLink && (
-                  <a 
-                    href={selectedPaymentMethod.paymentLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-primary hover:underline mt-3"
+              
+              {selectedMethod === "crypto-widget" ? (
+                <div className="space-y-4">
+                  <p className="text-sm">
+                    Click the button below to open the secure payment gateway.
+                  </p>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => window.open(`https://nowpayments.io/payment?iid=${paymentWidget?.invoiceId}`, '_blank')}
                   >
-                    Open Payment Link
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                )}
-              </div>
+                    Open Payment Gateway
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Payment Instructions</Label>
+                    <div className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap">
+                      {selectedPaymentMethod?.instructions}
+                    </div>
+                  </div>
+                  
+                  {selectedPaymentMethod?.paymentLink && (
+                    <div className="space-y-2">
+                      <Label>Payment Link</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1 p-2 bg-muted rounded-md text-xs truncate">
+                          {selectedPaymentMethod.paymentLink}
+                        </div>
+                        <Button 
+                          size="icon" 
+                          variant="outline" 
+                          className="h-8 w-8"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedPaymentMethod.paymentLink!);
+                            toast.success("Link copied");
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="outline" 
+                          className="h-8 w-8"
+                          onClick={() => window.open(selectedPaymentMethod.paymentLink!, '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               
-              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <div className="text-sm">
-                  <strong>Amount:</strong> ${price}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {selectedMethod === "crypto-widget" && paymentWidget && (
-            <div className="space-y-4 py-4">
-              <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
-                <div className="text-sm mb-3">
-                  <strong>Cryptocurrency Payment</strong>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  You will be redirected to our payment processor to complete the transaction securely.
-                </p>
-                <a 
-                  href={`https://nowpayments.io/payment/?iid=${paymentWidget.invoiceId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-primary hover:underline"
-                >
-                  Pay with Cryptocurrency
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            </div>
-          )}
-          
-          <Button onClick={handleConfirmPayment} className="w-full">
-            I Have Paid
-          </Button>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Confirm Payment Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Payment Confirmed</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4 text-center">
-            <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
-            <div>
-              <div className="font-semibold mb-2">Payment Received</div>
-              <p className="text-sm text-muted-foreground">
-                Your order has been received and is pending verification. You will receive an email confirmation shortly.
-              </p>
-            </div>
-            
-            {isProcessing && (
-              <div className="p-4 rounded-lg bg-blue-500/10">
-                <p className="text-sm">
-                  Redirecting in {countdown} seconds...
+              <div className="pt-4">
+                <Button className="w-full gradient-primary" onClick={handleConfirmPayment}>
+                  I Have Paid
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground mt-2">
+                  By clicking "I Have Paid", you confirm that you have sent the payment.
                 </p>
               </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Confirmation Processing Dialog */}
+        <Dialog open={showConfirmDialog} onOpenChange={(open) => !isProcessing && setShowConfirmDialog(open)}>
+          <DialogContent className="sm:max-w-[425px] text-center py-10">
+            <div className="flex flex-col items-center gap-4">
+              {isProcessing ? (
+                <>
+                  <div className="relative h-20 w-20">
+                    <Loader2 className="h-20 w-20 animate-spin text-primary" />
+                    <div className="absolute inset-0 flex items-center justify-center font-bold text-lg">
+                      {countdown}
+                    </div>
+                  </div>
+                  <DialogTitle>Verifying Payment</DialogTitle>
+                  <DialogDescription>
+                    Please wait while we verify your transaction...
+                  </DialogDescription>
+                </>
+              ) : (
+                <>
+                  <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
+                  </div>
+                  <DialogTitle>Payment Submitted</DialogTitle>
+                  <DialogDescription>
+                    Your payment has been submitted for manual verification.
+                  </DialogDescription>
+                  <Button className="w-full mt-4" onClick={() => setLocation("/orders")}>
+                    View My Orders
+                  </Button>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
