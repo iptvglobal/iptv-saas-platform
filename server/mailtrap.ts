@@ -1,25 +1,52 @@
+/**
+ * Mailtrap Email Service
+ * Handles all transactional emails via Mailtrap SMTP
+ */
+
 import nodemailer from 'nodemailer';
 
-/* ================= CONFIG ================= */
+/* ======================= CONFIG ======================= */
+
 const mailtrapHost = process.env.MAILTRAP_HOST || 'live.smtp.mailtrap.io';
-const mailtrapPort = Number(process.env.MAILTRAP_PORT || 2525);
-const mailtrapUser = process.env.MAILTRAP_USER!;
-const mailtrapPassword = process.env.MAILTRAP_PASSWORD!;
+const mailtrapPort = parseInt(process.env.MAILTRAP_PORT || '2525', 10);
+const mailtrapUser = process.env.MAILTRAP_USER;
+const mailtrapPassword = process.env.MAILTRAP_PASSWORD;
 
 const senderEmail =
   process.env.MAILTRAP_SENDER_EMAIL ||
-  'support@iptvtop.com';
+  process.env.BREVO_SENDER_EMAIL ||
+  'noreply@iptv.com';
 
 const senderName =
   process.env.MAILTRAP_SENDER_NAME ||
+  process.env.BREVO_SENDER_NAME ||
   'IPTV Premium';
 
-const BASE_URL =
-  process.env.VITE_APP_URL ||
-  process.env.APP_URL ||
-  'https://members.iptvtop.live';
+/* ======================= STARTUP LOGS ======================= */
 
-/* ================= TRANSPORT ================= */
+console.log('========================================');
+console.log('📧 MAILTRAP EMAIL SERVICE');
+console.log('========================================');
+console.log('Host:', mailtrapHost);
+console.log('Port:', mailtrapPort);
+console.log(
+  'User:',
+  mailtrapUser ? `✓ Set (${mailtrapUser.substring(0, 6)}***)` : '✗ MISSING'
+);
+console.log(
+  'Password:',
+  mailtrapPassword ? '✓ Set' : '✗ MISSING'
+);
+console.log('Sender Email:', senderEmail);
+console.log('Sender Name:', senderName);
+console.log('========================================');
+
+if (!mailtrapUser || !mailtrapPassword) {
+  console.error('❌ MAILTRAP_USER or MAILTRAP_PASSWORD is missing');
+}
+
+/* ======================= TRANSPORTER ======================= */
+
 const transporter = nodemailer.createTransport({
   host: mailtrapHost,
   port: mailtrapPort,
@@ -30,142 +57,194 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/* ================= HELPERS ================= */
-function emailButton(label: string, url: string) {
+transporter.verify((error) => {
+  if (error) {
+    console.error('❌ Mailtrap connection failed:', error);
+  } else {
+    console.log('✅ Mailtrap SMTP verified');
+  }
+});
+
+/* ======================= HELPERS ======================= */
+
+const baseUrl =
+  process.env.VITE_APP_URL ||
+  process.env.APP_URL ||
+  'https://members.iptvprovider8k.com';
+
+function dashboardButton(): string {
   return `
-  <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:32px auto">
-    <tr>
-      <td bgcolor="#4f46e5" style="border-radius:10px">
-        <a href="${url}"
-           style="display:inline-block;padding:14px 36px;color:#fff;text-decoration:none;font-weight:600;border-radius:10px">
-          ${label}
-        </a>
-      </td>
-    </tr>
-  </table>`;
+    <div style="margin:32px 0;text-align:center">
+      <a href="${baseUrl}/dashboard"
+        style="background:#4f46e5;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600">
+        View Dashboard
+      </a>
+    </div>
+  `;
 }
 
-function emailTemplate(content: string) {
+function credentialsButton(): string {
+  return `
+    <div style="margin:32px 0;text-align:center">
+      <a href="${baseUrl}/credentials"
+        style="background:#4f46e5;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600">
+        View Credentials
+      </a>
+    </div>
+  `;
+}
+
+function emailTemplate(content: string): string {
   return `
 <!DOCTYPE html>
 <html>
-<body style="margin:0;background:#f8fafc;font-family:Arial">
-  <table width="100%">
-    <tr><td align="center">
-      <table width="600" style="background:white;border-radius:12px;margin:20px">
-        <tr>
-          <td style="background:#4f46e5;color:white;padding:24px;text-align:center;border-radius:12px 12px 0 0">
-            <h1>IPTV Premium</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px">${content}</td>
-        </tr>
-        <tr>
-          <td style="text-align:center;font-size:12px;color:#64748b;padding:16px">
-            © ${new Date().getFullYear()} IPTV Premium
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { font-family: Arial, sans-serif; background:#f8fafc; }
+.container { max-width:600px; margin:auto; }
+.header {
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  color:white; padding:24px; text-align:center;
+}
+.body { background:white; padding:24px; }
+.footer { text-align:center; font-size:12px; color:#64748b; margin-top:24px; }
+table { width:100%; border-collapse:collapse; }
+td { padding:8px; border-bottom:1px solid #e5e7eb; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>IPTV Premium</h2>
+  </div>
+  <div class="body">
+    ${content}
+  </div>
+  <div class="footer">
+    © ${new Date().getFullYear()} IPTV Premium
+  </div>
+</div>
 </body>
-</html>`;
+</html>
+`;
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
-  if (!to || !to.includes('@')) {
-    throw new Error('Invalid email');
+/* ======================= CORE SEND ======================= */
+
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!to || !to.includes('@')) {
+      return { success: false, error: 'Invalid recipient email' };
+    }
+
+    await transporter.sendMail({
+      from: `"${senderName}" <${senderEmail}>`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log('✅ Email sent to', to);
+    return { success: true };
+  } catch (error: any) {
+    console.error('❌ Email send error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/* ======================= OTP EMAIL ======================= */
+
+export async function sendOTPEmail(email: string, otp: string) {
+  const content = `
+    <h2>Your OTP Code 🔐</h2>
+    <p>This code expires in 10 minutes.</p>
+    <div style="font-size:36px;font-weight:bold;text-align:center">${otp}</div>
+  `;
+  return sendEmail(email, 'Your OTP Code', emailTemplate(content));
+}
+
+/* ======================= ORDER CONFIRM ======================= */
+
+export async function sendOrderConfirmationEmail(data: {
+  to: string;
+  userName: string;
+  orderId: number;
+  planName: string;
+  connections: number;
+  price: string;
+  paymentMethod: string;
+}) {
+  const content = `
+    <h2>Order Confirmed ✅</h2>
+    <p>Hi ${data.userName},</p>
+    ${dashboardButton()}
+    <table>
+      <tr><td>Order</td><td>#${data.orderId}</td></tr>
+      <tr><td>Plan</td><td>${data.planName}</td></tr>
+      <tr><td>Connections</td><td>${data.connections}</td></tr>
+      <tr><td>Price</td><td>${data.price}</td></tr>
+      <tr><td>Payment</td><td>${data.paymentMethod}</td></tr>
+    </table>
+  `;
+  return sendEmail(
+    data.to,
+    'Order Confirmation - IPTV Premium',
+    emailTemplate(content)
+  );
+}
+
+/* ======================= CREDENTIALS ======================= */
+
+export async function sendCredentialsEmail(
+  email: string,
+  credentials: {
+    type: string;
+    username?: string;
+    password?: string;
+    url?: string;
+    m3uUrl?: string;
+    macAddress?: string;
+    expiresAt: Date;
+  }
+) {
+  let rows = '';
+
+  if (credentials.username) {
+    rows += `<tr><td>Username</td><td>${credentials.username}</td></tr>`;
+  }
+  if (credentials.password) {
+    rows += `<tr><td>Password</td><td>${credentials.password}</td></tr>`;
+  }
+  if (credentials.url) {
+    rows += `<tr><td>URL</td><td>${credentials.url}</td></tr>`;
+  }
+  if (credentials.m3uUrl) {
+    rows += `<tr><td>M3U</td><td>${credentials.m3uUrl}</td></tr>`;
+  }
+  if (credentials.macAddress) {
+    rows += `<tr><td>MAC</td><td>${credentials.macAddress}</td></tr>`;
   }
 
-  return transporter.sendMail({
-    from: `${senderName} <${senderEmail}>`,
-    to,
-    subject,
-    html,
-  });
+  rows += `<tr><td>Expires</td><td>${credentials.expiresAt.toDateString()}</td></tr>`;
+
+  const content = `
+    <h2>Your IPTV Credentials 🔑</h2>
+    ${credentialsButton()}
+    <table>${rows}</table>
+  `;
+
+  return sendEmail(email, 'Your IPTV Credentials', emailTemplate(content));
 }
 
-/* ================= EXPORTS ================= */
+/* ======================= TEST ======================= */
 
-/* OTP */
-export async function sendOTPEmail(email: string, otp: string) {
-  return sendEmail(
-    email,
-    'Your OTP Code',
-    emailTemplate(`
-      <h2>Your OTP 🔐</h2>
-      <div style="font-size:32px;font-weight:700">${otp}</div>
-    `)
-  );
-}
-
-/* ORDER CONFIRMATION */
-export async function sendOrderConfirmationEmail(data: any) {
-  return sendEmail(
-    data.to,
-    'Order Confirmation',
-    emailTemplate(`
-      <h2>Order Confirmed ✅</h2>
-      ${emailButton('Open Dashboard', `${BASE_URL}/dashboard`)}
-    `)
-  );
-}
-
-/* ADMIN ORDER */
-export async function sendAdminNewOrderEmail(data: any) {
-  return sendEmail(
-    process.env.ADMIN_NOTIFICATION_EMAIL || senderEmail,
-    `New Order #${data.orderId}`,
-    emailTemplate(`
-      <h2>New Order 📦</h2>
-      <p>User: ${data.userEmail}</p>
-    `)
-  );
-}
-
-/* PAYMENT */
-export async function sendPaymentVerificationEmail(data: any) {
-  return sendEmail(
-    data.to,
-    `Payment ${data.status}`,
-    emailTemplate(`
-      <h2>Payment ${data.status}</h2>
-      ${emailButton('Dashboard', `${BASE_URL}/dashboard`)}
-    `)
-  );
-}
-
-/* CREDENTIALS */
-export async function sendCredentialsEmail(email: string, credentials: any) {
-  return sendEmail(
-    email,
-    'Your IPTV Credentials',
-    emailTemplate(`
-      <h2>Your Credentials 🔑</h2>
-      ${emailButton('View Credentials', `${BASE_URL}/dashboard`)}
-    `)
-  );
-}
-
-/* CHAT */
-export async function sendNewChatMessageEmail(data: any) {
-  return sendEmail(
-    data.to,
-    'New Message',
-    emailTemplate(`
-      <h2>New Message 💬</h2>
-      <p>${data.message}</p>
-      ${emailButton('Open Chat', `${BASE_URL}/chat`)}
-    `)
-  );
-}
-
-/* TEST */
 export async function sendTestEmail(to: string) {
-  return sendEmail(
-    to,
-    'Test Email',
-    emailTemplate(`<h2>Email works ✅</h2>`)
-  );
+  const content = `<h2>Test Email ✅</h2><p>Email system working.</p>`;
+  return sendEmail(to, 'Test Email', emailTemplate(content));
 }
