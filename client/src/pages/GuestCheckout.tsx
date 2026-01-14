@@ -104,10 +104,11 @@ export default function GuestCheckout() {
   };
   
   const validateMacAddress = (mac: string) => {
-    // MAC address format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX or XXXXXXXXXXXX
-    // More flexible validation to accept various formats
-    const cleanMac = mac.replace(/[:-]/g, '').toUpperCase();
-    return /^[0-9A-F]{12}$/.test(cleanMac);
+    // Flexible MAC address validation:
+    // 1. Remove all non-alphanumeric characters (colons, hyphens, spaces, dots, etc.)
+    const cleanMac = mac.replace(/[^0-9A-Z]/gi, '').toUpperCase();
+    // 2. Check if it's exactly 12 alphanumeric characters (A-Z and 0-9)
+    return /^[0-9A-Z]{12}$/.test(cleanMac);
   };
   
   const handleGuestCheckout = async () => {
@@ -229,7 +230,7 @@ export default function GuestCheckout() {
     }
     
     if (selectedCredentialsType === "mag" && !validateMacAddress(macAddress)) {
-      toast.error("Please enter a valid MAC address (format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX)");
+      toast.error("Invalid MAC address. Please use format XX:XX:XX:XX:XX:XX");
       return;
     }
     
@@ -300,92 +301,89 @@ export default function GuestCheckout() {
         <Card>
           <CardHeader>
             <CardTitle>Order Summary</CardTitle>
-            <CardDescription>Review your subscription details</CardDescription>
+            <CardDescription>You are purchasing {plan.name}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Plan</span>
-              <span className="font-medium">{plan.name}</span>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Tv className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <div className="font-medium">{plan.name}</div>
+                  <div className="text-sm text-muted-foreground">{connections} Connection{connections > 1 ? 's' : ''}</div>
+                </div>
+              </div>
+              <div className="text-xl font-bold text-primary">${price}</div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Duration</span>
-              <span className="font-medium">{plan.durationDays} days</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Connections</span>
-              <span className="font-medium">{connections}</span>
-            </div>
+            
             <Separator />
-            <div className="flex justify-between items-center text-lg">
-              <span className="font-semibold">Total</span>
-              <span className="font-bold text-primary">${price}</span>
+            
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Plan Features:</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {plan.features?.map((feature, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    {feature}
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
         
-        {/* Account Information - Only show if not authenticated */}
+        {/* Guest Info / Account Creation */}
         {!isAuthenticated && !accountCreated && (
           <Card>
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
-              <CardDescription>
-                Enter your details to create an account and complete your order
-              </CardDescription>
+              <CardDescription>Enter your details to create an account and track your order</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Name (Optional)
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name (Optional)</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="name" 
+                      placeholder="John Doe" 
+                      className="pl-10"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="john@example.com" 
+                      className="pl-10"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email Address *
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  Password *
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Minimum 6 characters. This will be your login password.
-                </p>
-              </div>
-              
-              <div className="p-3 rounded-lg bg-muted text-sm">
-                <p className="text-muted-foreground">
-                  Already have an account?{" "}
-                  <Link href="/" className="text-primary hover:underline font-medium">
-                    Sign in here
-                  </Link>
-                </p>
+                <Label htmlFor="password">Create Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="pl-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Minimum 6 characters. You'll use this to log in later.</p>
               </div>
             </CardContent>
           </Card>
@@ -398,7 +396,7 @@ export default function GuestCheckout() {
             <CardDescription>Select how you'd like to pay</CardDescription>
           </CardHeader>
           <CardContent>
-            <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod}>
+            <RadioGroup value={selectedMethod} onValueChange={setSelectedMethod} className="grid gap-4">
               {/* Crypto Widget Option */}
               {paymentWidget && (
                 <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
@@ -445,274 +443,213 @@ export default function GuestCheckout() {
                 </div>
               ))}
             </RadioGroup>
-            
-            <Button 
-              className="w-full mt-6 gradient-primary"
-              size="lg"
-              onClick={handleProceedToPayment}
-              disabled={!selectedMethod || isCreatingAccount || createOrder.isPending}
-            >
-              {isCreatingAccount || createOrder.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                `Proceed to Payment - $${price}`
-              )}
-            </Button>
           </CardContent>
         </Card>
         
-        {/* Credentials Selection Dialog */}
+        {/* Action Button */}
+        <Button 
+          className="w-full gradient-primary h-12 text-lg"
+          onClick={handleProceedToPayment}
+          disabled={!selectedMethod || isCreatingAccount}
+        >
+          {isCreatingAccount ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Complete Order"
+          )}
+        </Button>
+        
+        <p className="text-center text-xs text-muted-foreground">
+          By completing this order, you agree to our Terms of Service and Privacy Policy.
+        </p>
+        
+        {/* Credentials Dialog */}
         <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>How would you like to receive your credentials?</DialogTitle>
+              <DialogTitle>Select Credentials Type</DialogTitle>
               <DialogDescription>
-                Choose your preferred IPTV player format
+                Choose how you want to access your IPTV service
               </DialogDescription>
             </DialogHeader>
-            
-            <div className="space-y-3">
-              <div 
-                onClick={() => setSelectedCredentialsType("xtream")}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                  selectedCredentialsType === "xtream" 
-                    ? "border-primary bg-primary/5" 
-                    : "border-muted hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Code className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">Xtream Codes API</div>
-                    <div className="text-xs text-muted-foreground">For advanced users and developers</div>
-                  </div>
+            <div className="grid gap-4 py-4">
+              <RadioGroup value={selectedCredentialsType || ""} onValueChange={(v) => setSelectedCredentialsType(v as CredentialsType)}>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="xtream" id="xtream" />
+                  <Label htmlFor="xtream" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-primary" />
+                      <div className="font-medium">Xtream Codes</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">Username, Password & Server URL</div>
+                  </Label>
                 </div>
-              </div>
-              
-              <div 
-                onClick={() => setSelectedCredentialsType("mag")}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                  selectedCredentialsType === "mag" 
-                    ? "border-primary bg-primary/5" 
-                    : "border-muted hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Tv className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">MAG Portal URL</div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="m3u" id="m3u" />
+                  <Label htmlFor="m3u" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Tv className="h-4 w-4 text-primary" />
+                      <div className="font-medium">M3U Playlist</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">Playlist URL & EPG URL</div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="mag" id="mag" />
+                  <Label htmlFor="mag" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Tv className="h-4 w-4 text-primary" />
+                      <div className="font-medium">MAG / Portal</div>
+                    </div>
                     <div className="text-xs text-muted-foreground">For MAG boxes (requires MAC address)</div>
-                  </div>
+                  </Label>
                 </div>
-              </div>
-              
-              <div 
-                onClick={() => setSelectedCredentialsType("m3u")}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                  selectedCredentialsType === "m3u" 
-                    ? "border-primary bg-primary/5" 
-                    : "border-muted hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Code className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">M3U / M3U8 Playlist</div>
-                    <div className="text-xs text-muted-foreground">For VLC, Kodi, and other players</div>
-                  </div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
+                  <RadioGroupItem value="enigma2" id="enigma2" />
+                  <Label htmlFor="enigma2" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-primary" />
+                      <div className="font-medium">Enigma2</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">For Enigma2 devices</div>
+                  </Label>
                 </div>
-              </div>
+              </RadioGroup>
               
-              <div 
-                onClick={() => setSelectedCredentialsType("enigma2")}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                  selectedCredentialsType === "enigma2" 
-                    ? "border-primary bg-primary/5" 
-                    : "border-muted hover:border-primary/50"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Smartphone className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">Enigma2 (E2) / Dreambox</div>
-                    <div className="text-xs text-muted-foreground">For Dreambox and compatible receivers</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* MAC Address Input for MAG */}
               {selectedCredentialsType === "mag" && (
-                <div className="space-y-2 pt-4 border-t">
-                  <Label htmlFor="mac-address">MAC Address *</Label>
+                <div className="space-y-2 mt-2">
+                  <Label htmlFor="mac">MAC Address</Label>
                   <Input
-                    id="mac-address"
-                    type="text"
-                    placeholder="00:1A:2B:3C:4D:5E"
+                    id="mac"
+                    placeholder="XX:XX:XX:XX:XX:XX"
                     value={macAddress}
-                    onChange={(e) => setMacAddress(e.target.value.toUpperCase())}
+                    onChange={(e) => setMacAddress(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Format: XX:XX:XX:XX:XX:XX (find it on your MAG box settings)
+                  <p className="text-[10px] text-muted-foreground">
+                    Format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
                   </p>
                 </div>
               )}
-              
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => setShowCredentialsDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  className="flex-1 gradient-primary"
-                  onClick={handleCredentialsSelection}
-                >
-                  Continue
-                </Button>
-              </div>
             </div>
+            <Button onClick={handleCredentialsSelection} className="w-full gradient-primary">
+              Confirm & Continue
+            </Button>
           </DialogContent>
         </Dialog>
         
-        {/* Payment Dialog */}
+        {/* Payment Instructions Dialog */}
         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Complete Your Payment</DialogTitle>
+              <DialogTitle>Payment Instructions</DialogTitle>
               <DialogDescription>
-                {isCrypto 
-                  ? "Complete your payment using the widget below"
-                  : "Follow the instructions to complete your payment"
-                }
+                Please follow these steps to complete your payment
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
-              {/* Account Created Notice */}
-              {accountCreated && !isAuthenticated && (
-                <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">Account Created!</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your account has been created. You can sign in with your email and password after completing the payment.
-                  </p>
-                </div>
-              )}
+            <div className="space-y-6 py-4">
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                <h4 className="font-semibold text-primary mb-2">Amount to Pay: ${price}</h4>
+                <p className="text-sm text-muted-foreground">
+                  Please send the exact amount to ensure your order is processed quickly.
+                </p>
+              </div>
               
-              {/* Crypto Widget */}
-              {selectedMethod === "crypto-widget" && paymentWidget && (
-                <div className="w-full flex justify-center rounded-lg border p-4 bg-white">
-                  <iframe 
-                    src={`https://nowpayments.io/embeds/payment-widget?iid=${paymentWidget.invoiceId}`}
-                    width="410"
-                    height="600"
-                    frameBorder="0"
-                    scrolling="yes"
-                    className="rounded-lg"
-                  >
-                    Can't load widget
-                  </iframe>
-                </div>
-              )}
-              
-              {/* Manual Payment Instructions */}
-              {selectedPaymentMethod && selectedMethod !== "crypto-widget" && (
+              {selectedMethod === "crypto-widget" ? (
                 <div className="space-y-4">
-                  {selectedPaymentMethod.instructions && (
-                    <div className="p-4 rounded-lg bg-muted">
-                      <h4 className="font-medium mb-2">Payment Instructions</h4>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {selectedPaymentMethod.instructions}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {selectedPaymentMethod.paymentLink && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full gap-2"
-                      onClick={() => window.open(selectedPaymentMethod.paymentLink!, "_blank")}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Open Payment Link
-                    </Button>
-                  )}
-                </div>
-              )}
-              
-              <Separator />
-              
-              <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
-                <span className="text-sm text-muted-foreground">Order ID</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium">#{orderId}</span>
+                  <p className="text-sm">
+                    Click the button below to open the secure payment gateway.
+                  </p>
                   <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => copyToClipboard(`#${orderId}`)}
+                    className="w-full" 
+                    onClick={() => window.open(`https://nowpayments.io/payment?iid=${paymentWidget?.invoiceId}`, '_blank')}
                   >
-                    <Copy className="h-4 w-4" />
+                    Open Payment Gateway
+                    <ExternalLink className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Payment Instructions</Label>
+                    <div className="p-3 bg-muted rounded-md text-sm whitespace-pre-wrap">
+                      {selectedPaymentMethod?.instructions}
+                    </div>
+                  </div>
+                  
+                  {selectedPaymentMethod?.paymentLink && (
+                    <div className="space-y-2">
+                      <Label>Payment Link</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1 p-2 bg-muted rounded-md text-xs truncate">
+                          {selectedPaymentMethod.paymentLink}
+                        </div>
+                        <Button 
+                          size="icon" 
+                          variant="outline" 
+                          className="h-8 w-8"
+                          onClick={() => copyToClipboard(selectedPaymentMethod.paymentLink!)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="outline" 
+                          className="h-8 w-8"
+                          onClick={() => window.open(selectedPaymentMethod.paymentLink!, '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="pt-4">
+                <Button className="w-full gradient-primary" onClick={handleConfirmPayment}>
+                  I Have Paid
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground mt-2">
+                  By clicking "I Have Paid", you confirm that you have sent the payment.
+                </p>
               </div>
-              
-              <Button 
-                className="w-full gradient-primary"
-                size="lg"
-                onClick={handleConfirmPayment}
-              >
-                I Have Paid
-              </Button>
-              
-              <p className="text-xs text-center text-muted-foreground">
-                Click "I Have Paid" after completing your payment. 
-                Our team will verify your payment within 1-2 hours.
-              </p>
             </div>
           </DialogContent>
         </Dialog>
         
-        {/* Confirmation Dialog with Loading Animation */}
-        <Dialog open={showConfirmDialog} onOpenChange={() => {}}>
-          <DialogContent className="max-w-sm text-center">
-            <div className="py-8 space-y-6">
+        {/* Confirmation Processing Dialog */}
+        <Dialog open={showConfirmDialog} onOpenChange={(open) => !isProcessing && setShowConfirmDialog(open)}>
+          <DialogContent className="sm:max-w-[425px] text-center py-10">
+            <div className="flex flex-col items-center gap-4">
               {isProcessing ? (
                 <>
-                  <div className="relative mx-auto w-20 h-20">
-                    <div className="absolute inset-0 rounded-full border-4 border-muted" />
-                    <div 
-                      className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold">{countdown}</span>
+                  <div className="relative h-20 w-20">
+                    <Loader2 className="h-20 w-20 animate-spin text-primary" />
+                    <div className="absolute inset-0 flex items-center justify-center font-bold text-lg">
+                      {countdown}
                     </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Verifying Payment</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Please wait while we process your confirmation...
-                    </p>
-                  </div>
+                  <DialogTitle>Verifying Payment</DialogTitle>
+                  <DialogDescription>
+                    Please wait while we verify your transaction...
+                  </DialogDescription>
                 </>
               ) : (
                 <>
-                  <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <CheckCircle className="h-10 w-10 text-emerald-500" />
+                  <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Payment Confirmed!</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Your order is now pending admin verification.
-                    </p>
-                  </div>
+                  <DialogTitle>Payment Submitted</DialogTitle>
+                  <DialogDescription>
+                    Your payment has been submitted for manual verification.
+                  </DialogDescription>
+                  <Button className="w-full mt-4" onClick={() => setLocation("/orders")}>
+                    View My Orders
+                  </Button>
                 </>
               )}
             </div>
