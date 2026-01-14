@@ -8,7 +8,7 @@ const mailtrapPassword = process.env.MAILTRAP_PASSWORD!;
 
 const senderEmail =
   process.env.MAILTRAP_SENDER_EMAIL ||
-  'noreply@iptv.com';
+  'support@iptvtop.com';
 
 const senderName =
   process.env.MAILTRAP_SENDER_NAME ||
