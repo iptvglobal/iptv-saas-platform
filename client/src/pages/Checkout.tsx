@@ -73,11 +73,11 @@ export default function Checkout() {
   }, [isProcessing, countdown]);
   
   const validateMacAddress = (mac: string) => {
-    // Improved MAC address validation:
-    // 1. Remove all non-hex characters (colons, hyphens, spaces, etc.)
-    const cleanMac = mac.replace(/[^0-9A-F]/gi, '').toUpperCase();
-    // 2. Check if it's exactly 12 hex characters
-    return /^[0-9A-F]{12}$/.test(cleanMac);
+    // Flexible MAC address validation:
+    // 1. Remove all non-alphanumeric characters (colons, hyphens, spaces, dots, etc.)
+    const cleanMac = mac.replace(/[^0-9A-Z]/gi, '').toUpperCase();
+    // 2. Check if it's exactly 12 alphanumeric characters (A-Z and 0-9)
+    return /^[0-9A-Z]{12}$/.test(cleanMac);
   };
   
   const handleCredentialsSelection = () => {
