@@ -1,26 +1,17 @@
-/**
- * Mailtrap Email Service – IPTV SaaS
- * Fully compatible with Gmail, Outlook, Apple Mail
- */
-
 import nodemailer from 'nodemailer';
 
-/* =======================
-   CONFIG
-======================= */
+/* ================= CONFIG ================= */
 const mailtrapHost = process.env.MAILTRAP_HOST || 'live.smtp.mailtrap.io';
 const mailtrapPort = Number(process.env.MAILTRAP_PORT || 2525);
-const mailtrapUser = process.env.MAILTRAP_USER;
-const mailtrapPassword = process.env.MAILTRAP_PASSWORD;
+const mailtrapUser = process.env.MAILTRAP_USER!;
+const mailtrapPassword = process.env.MAILTRAP_PASSWORD!;
 
 const senderEmail =
   process.env.MAILTRAP_SENDER_EMAIL ||
-  process.env.BREVO_SENDER_EMAIL ||
   'noreply@iptv.com';
 
 const senderName =
   process.env.MAILTRAP_SENDER_NAME ||
-  process.env.BREVO_SENDER_NAME ||
   'IPTV Premium';
 
 const BASE_URL =
@@ -28,9 +19,7 @@ const BASE_URL =
   process.env.APP_URL ||
   'https://members.iptvtop.live';
 
-/* =======================
-   TRANSPORTER
-======================= */
+/* ================= TRANSPORT ================= */
 const transporter = nodemailer.createTransport({
   host: mailtrapHost,
   port: mailtrapPort,
@@ -41,191 +30,142 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.verify(err => {
-  if (err) console.error('❌ SMTP Error:', err);
-  else console.log('✅ SMTP Ready');
-});
-
-/* =======================
-   BUTTON (EMAIL SAFE)
-======================= */
+/* ================= HELPERS ================= */
 function emailButton(label: string, url: string) {
   return `
-    <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:32px auto">
-      <tr>
-        <td bgcolor="#4f46e5" style="border-radius:10px">
-          <a href="${url}"
-             target="_blank"
-             style="
-               display:inline-block;
-               padding:14px 36px;
-               color:#ffffff;
-               font-size:16px;
-               font-weight:600;
-               text-decoration:none;
-               border-radius:10px;
-               font-family:Arial,Helvetica,sans-serif;
-             ">
-            ${label}
-          </a>
-        </td>
-      </tr>
-    </table>
-  `;
+  <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:32px auto">
+    <tr>
+      <td bgcolor="#4f46e5" style="border-radius:10px">
+        <a href="${url}"
+           style="display:inline-block;padding:14px 36px;color:#fff;text-decoration:none;font-weight:600;border-radius:10px">
+          ${label}
+        </a>
+      </td>
+    </tr>
+  </table>`;
 }
 
-/* =======================
-   EMAIL TEMPLATE
-======================= */
 function emailTemplate(content: string) {
   return `
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width">
-</head>
-<body style="margin:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="margin:20px auto">
-          <tr>
-            <td style="background:#4f46e5;color:white;padding:28px;text-align:center;border-radius:12px 12px 0 0">
-              <h1 style="margin:0;font-size:24px">IPTV Premium</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="background:white;padding:32px;border-radius:0 0 12px 12px">
-              ${content}
-            </td>
-          </tr>
-          <tr>
-            <td style="text-align:center;font-size:12px;color:#64748b;padding:20px">
-              © ${new Date().getFullYear()} IPTV Premium — Do not reply
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
+<body style="margin:0;background:#f8fafc;font-family:Arial">
+  <table width="100%">
+    <tr><td align="center">
+      <table width="600" style="background:white;border-radius:12px;margin:20px">
+        <tr>
+          <td style="background:#4f46e5;color:white;padding:24px;text-align:center;border-radius:12px 12px 0 0">
+            <h1>IPTV Premium</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px">${content}</td>
+        </tr>
+        <tr>
+          <td style="text-align:center;font-size:12px;color:#64748b;padding:16px">
+            © ${new Date().getFullYear()} IPTV Premium
+          </td>
+        </tr>
+      </table>
+    </td></tr>
   </table>
 </body>
-</html>
-`;
+</html>`;
 }
 
-/* =======================
-   CORE SEND FUNCTION
-======================= */
-async function sendEmail(
-  to: string,
-  subject: string,
-  html: string
-) {
+async function sendEmail(to: string, subject: string, html: string) {
   if (!to || !to.includes('@')) {
-    return { success: false, error: 'Invalid email' };
+    throw new Error('Invalid email');
   }
 
-  const info = await transporter.sendMail({
+  return transporter.sendMail({
     from: `${senderName} <${senderEmail}>`,
     to,
     subject,
     html,
   });
-
-  return { success: true, messageId: info.messageId };
 }
 
-/* =======================
-   CREDENTIALS EMAIL
-======================= */
-export async function sendCredentialsEmail(
-  email: string,
-  credentials: {
-    type: string;
-    username?: string;
-    password?: string;
-    url?: string;
-    m3uUrl?: string;
-    portalUrl?: string;
-    macAddress?: string;
-    expiresAt: Date;
-  }
-) {
-  let rows = '';
+/* ================= EXPORTS ================= */
 
-  if (credentials.username)
-    rows += `<tr><td><b>Username</b></td><td>${credentials.username}</td></tr>`;
-  if (credentials.password)
-    rows += `<tr><td><b>Password</b></td><td>${credentials.password}</td></tr>`;
-  if (credentials.url)
-    rows += `<tr><td><b>Server URL</b></td><td>${credentials.url}</td></tr>`;
-  if (credentials.m3uUrl)
-    rows += `<tr><td><b>M3U URL</b></td><td>${credentials.m3uUrl}</td></tr>`;
-  if (credentials.portalUrl)
-    rows += `<tr><td><b>Portal</b></td><td>${credentials.portalUrl}</td></tr>`;
-  if (credentials.macAddress)
-    rows += `<tr><td><b>MAC</b></td><td>${credentials.macAddress}</td></tr>`;
-
-  const content = `
-<h2>Your IPTV Credentials 🔑</h2>
-<p>Your subscription is active.</p>
-
-${emailButton('View Credentials', `${BASE_URL}/dashboard`)}
-
-<table width="100%" cellpadding="10" style="border-collapse:collapse;background:#f8fafc">
-  ${rows}
-  <tr>
-    <td><b>Expires</b></td>
-    <td style="color:#4f46e5;font-weight:700">
-      ${credentials.expiresAt.toDateString()}
-    </td>
-  </tr>
-</table>
-
-<p style="font-size:13px;color:#64748b;margin-top:16px">
-⚠️ Do not share your credentials
-</p>
-`;
-
-  return await sendEmail(
+/* OTP */
+export async function sendOTPEmail(email: string, otp: string) {
+  return sendEmail(
     email,
-    'Your IPTV Credentials',
-    emailTemplate(content)
+    'Your OTP Code',
+    emailTemplate(`
+      <h2>Your OTP 🔐</h2>
+      <div style="font-size:32px;font-weight:700">${otp}</div>
+    `)
   );
 }
 
-/* =======================
-   NEW CHAT MESSAGE EMAIL
-======================= */
-export async function sendNewChatMessageEmail(data: {
-  to: string;
-  userName: string;
-  message: string;
-}) {
-  const safeMessage = data.message
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  const content = `
-<h2>New Message 💬</h2>
-<p>Hi ${data.userName},</p>
-<p>You have received a new support message:</p>
-
-<div style="background:#f1f5f9;padding:16px;border-left:4px solid #4f46e5">
-  "${safeMessage}"
-</div>
-
-${emailButton('Open Chat', `${BASE_URL}/chat`)}
-
-<p style="font-size:13px;color:#64748b">
-Reply via your dashboard
-</p>
-`;
-
-  return await sendEmail(
+/* ORDER CONFIRMATION */
+export async function sendOrderConfirmationEmail(data: any) {
+  return sendEmail(
     data.to,
-    'New Support Message - IPTV Premium',
-    emailTemplate(content)
+    'Order Confirmation',
+    emailTemplate(`
+      <h2>Order Confirmed ✅</h2>
+      ${emailButton('Open Dashboard', `${BASE_URL}/dashboard`)}
+    `)
+  );
+}
+
+/* ADMIN ORDER */
+export async function sendAdminNewOrderEmail(data: any) {
+  return sendEmail(
+    process.env.ADMIN_NOTIFICATION_EMAIL || senderEmail,
+    `New Order #${data.orderId}`,
+    emailTemplate(`
+      <h2>New Order 📦</h2>
+      <p>User: ${data.userEmail}</p>
+    `)
+  );
+}
+
+/* PAYMENT */
+export async function sendPaymentVerificationEmail(data: any) {
+  return sendEmail(
+    data.to,
+    `Payment ${data.status}`,
+    emailTemplate(`
+      <h2>Payment ${data.status}</h2>
+      ${emailButton('Dashboard', `${BASE_URL}/dashboard`)}
+    `)
+  );
+}
+
+/* CREDENTIALS */
+export async function sendCredentialsEmail(email: string, credentials: any) {
+  return sendEmail(
+    email,
+    'Your IPTV Credentials',
+    emailTemplate(`
+      <h2>Your Credentials 🔑</h2>
+      ${emailButton('View Credentials', `${BASE_URL}/dashboard`)}
+    `)
+  );
+}
+
+/* CHAT */
+export async function sendNewChatMessageEmail(data: any) {
+  return sendEmail(
+    data.to,
+    'New Message',
+    emailTemplate(`
+      <h2>New Message 💬</h2>
+      <p>${data.message}</p>
+      ${emailButton('Open Chat', `${BASE_URL}/chat`)}
+    `)
+  );
+}
+
+/* TEST */
+export async function sendTestEmail(to: string) {
+  return sendEmail(
+    to,
+    'Test Email',
+    emailTemplate(`<h2>Email works ✅</h2>`)
   );
 }
