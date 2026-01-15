@@ -1,5 +1,5 @@
 import { supabaseClient, supabaseAdmin } from './supabase';
-import { sendOTPEmail } from './mailtrap';
+import { sendOTPEmail, sendWelcomeEmail } from './mailtrap';
 
 /**
  * Generate a 6-digit OTP code
@@ -143,6 +143,17 @@ export async function verifyOTP(email: string, otp: string) {
     }
 
     console.log('[Supabase Auth] Email verified successfully for:', email);
+
+    // Send welcome email to newly verified user
+    try {
+      const userName = metadata.name || email.split('@')[0];
+      await sendWelcomeEmail(email, userName);
+      console.log('[Supabase Auth] Welcome email sent to:', email);
+    } catch (welcomeEmailError) {
+      console.error('[Supabase Auth] Failed to send welcome email:', welcomeEmailError);
+      // Don't fail verification if welcome email fails
+    }
+
     return { success: true, message: 'Email verified successfully' };
   } catch (error: any) {
     console.error('[Supabase Auth] OTP verification exception:', error);
