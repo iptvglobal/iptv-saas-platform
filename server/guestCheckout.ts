@@ -4,7 +4,7 @@ import * as db from "./db";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { supabaseClient, supabaseAdmin } from "./supabase";
-import { sendOrderConfirmationEmail, sendAdminNewOrderEmail } from "./mailtrap";
+import { sendOrderConfirmationEmail, sendAdminNewOrderEmail, sendWelcomeEmail } from "./mailtrap";
 
 /**
  * Register guest checkout routes
@@ -207,6 +207,17 @@ export function registerGuestCheckoutRoutes(app: Express) {
       } catch (logError) {
         console.error('[Guest Checkout] Failed to log activity:', logError);
         // Don't fail the checkout if logging fails
+      }
+
+      // Send welcome email for new users
+      if (isNewUser && email) {
+        try {
+          await sendWelcomeEmail(email, name || email.split('@')[0] || 'Customer');
+          console.log('[Guest Checkout] Welcome email sent to:', email);
+        } catch (welcomeError) {
+          console.error('[Guest Checkout] Failed to send welcome email:', welcomeError);
+          // Don't fail checkout if welcome email fails
+        }
       }
 
       // Send order confirmation email to user and admin notification
