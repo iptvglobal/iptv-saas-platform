@@ -16,7 +16,7 @@ const senderName = process.env.MAILTRAP_SENDER_NAME || process.env.BREVO_SENDER_
 
 const BASE_URL = process.env.VITE_APP_URL || process.env.APP_URL || 'https://members.iptvtop.live';
 const DASHBOARD_URL = `${BASE_URL}/dashboard`;
-const CREDENTIALS_URL = `${BASE_URL}/credentials`;
+// Credentials are now shown on the dashboard, no separate page
 const CHAT_URL = `${BASE_URL}/chat`;
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 
@@ -156,7 +156,7 @@ function emailTemplate(content: string, showDashboard: boolean = true, showChat:
 function viewCredentialsButton(): string {
   return `
     <div style="margin:28px 0;text-align:center">
-      <a href="${CREDENTIALS_URL}"
+      <a href="${DASHBOARD_URL}"
          style="display:inline-block;
                 background:linear-gradient(135deg,#22c55e,#16a34a);
                 color:#ffffff;
@@ -169,7 +169,7 @@ function viewCredentialsButton(): string {
         🔑 View Your Credentials
       </a>
       <p style="margin-top:12px;font-size:13px;color:#64748b">
-        Or copy this link: <a href="${CREDENTIALS_URL}" style="color:#16a34a">${CREDENTIALS_URL}</a>
+        Or copy this link: <a href="${DASHBOARD_URL}" style="color:#16a34a">${DASHBOARD_URL}</a>
       </p>
     </div>
   `;
