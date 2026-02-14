@@ -71,6 +71,7 @@ export default function GuestCheckout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const [orderId, setOrderId] = useState<number | null>(null);
+  const [paymentLinkCountdown, setPaymentLinkCountdown] = useState(0);
   const [paymentLinkOpened, setPaymentLinkOpened] = useState(false);
   
   // Credentials selection state
@@ -93,12 +94,22 @@ export default function GuestCheckout() {
     }
   }, [isProcessing, countdown]);
   
-  // Auto-open payment link when dialog opens and payment link is available
+  // 7-second countdown before opening payment link
   useEffect(() => {
-    if (showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
-      // Open payment link in new tab automatically
+    if (paymentLinkCountdown > 0) {
+      const timer = setTimeout(() => setPaymentLinkCountdown(paymentLinkCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (paymentLinkCountdown === 0 && showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+      // Auto-open payment link after countdown reaches 0
       window.open(selectedPaymentMethod.paymentLink, '_blank');
       setPaymentLinkOpened(true);
+    }
+  }, [paymentLinkCountdown, showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
+  
+  // Start countdown when payment dialog opens
+  useEffect(() => {
+    if (showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+      setPaymentLinkCountdown(7);
     }
   }, [showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
   
@@ -178,6 +189,7 @@ export default function GuestCheckout() {
       setOrderId(data.orderId);
       setCredentialsSubmitted(true);
       setPaymentLinkOpened(false); // Reset for payment dialog
+      setPaymentLinkCountdown(0); // Reset countdown
       setShowPaymentDialog(true);
       
       // Refresh auth state to get the new session
@@ -210,6 +222,7 @@ export default function GuestCheckout() {
       
       setOrderId(result.orderId || null);
       setPaymentLinkOpened(false); // Reset for payment dialog
+      setPaymentLinkCountdown(0); // Reset countdown
       setShowPaymentDialog(true);
     } catch (error) {
       toast.error("Failed to create order. Please try again.");
@@ -571,29 +584,28 @@ export default function GuestCheckout() {
                 </div>
                 
                 {selectedPaymentMethod?.paymentLink && (
-                  <div className="space-y-2">
-                    <Label>Payment Link</Label>
-                    <div className="flex gap-2">
-                      <div className="flex-1 p-2 bg-muted rounded-md text-xs truncate">
-                        {selectedPaymentMethod.paymentLink}
+                  <div className="space-y-3">
+                    {/* Countdown Timer */}
+                    {paymentLinkCountdown > 0 && !paymentLinkOpened && (
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                        <p className="text-sm text-blue-900 font-medium">
+                          Payment link will open automatically in <span className="text-lg font-bold text-blue-600">{paymentLinkCountdown}</span> seconds...
+                        </p>
                       </div>
-                      <Button 
-                        size="icon" 
-                        variant="outline" 
-                        className="h-8 w-8"
-                        onClick={() => copyToClipboard(selectedPaymentMethod.paymentLink!)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        variant="outline" 
-                        className="h-8 w-8"
-                        onClick={() => window.open(selectedPaymentMethod.paymentLink!, '_blank')}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    )}
+                    
+                    {/* Payment Link Button */}
+                    <Button 
+                      className="w-full" 
+                      onClick={() => {
+                        window.open(selectedPaymentMethod.paymentLink!, '_blank');
+                        setPaymentLinkOpened(true);
+                        setPaymentLinkCountdown(0);
+                      }}
+                    >
+                      Open Payment Link
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </Button>
                   </div>
                 )}
               </div>
