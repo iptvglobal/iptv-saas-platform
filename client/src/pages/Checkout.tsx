@@ -50,6 +50,7 @@ export default function Checkout() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const [orderId, setOrderId] = useState<number | null>(null);
+  const [paymentLinkOpened, setPaymentLinkOpened] = useState(false);
   
   // Credentials selection state
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
@@ -71,6 +72,15 @@ export default function Checkout() {
       handlePaymentComplete();
     }
   }, [isProcessing, countdown]);
+  
+  // Auto-open payment link when dialog opens and payment link is available
+  useEffect(() => {
+    if (showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+      // Open payment link in new tab automatically
+      window.open(selectedPaymentMethod.paymentLink, '_blank');
+      setPaymentLinkOpened(true);
+    }
+  }, [showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
   
   const validateMacAddress = (mac: string) => {
     // Flexible MAC address validation:
@@ -133,6 +143,7 @@ export default function Checkout() {
       });
       
       setOrderId(result.orderId || null);
+      setPaymentLinkOpened(false); // Reset for next payment
       setShowPaymentDialog(true);
     } catch (error) {
       toast.error("Failed to create order. Please try again.");
@@ -418,11 +429,19 @@ export default function Checkout() {
               )}
               
               <div className="pt-4">
-                <Button className="w-full gradient-primary" onClick={handleConfirmPayment}>
-                  I Have Paid
+                <Button 
+                  className="w-full gradient-primary" 
+                  onClick={() => {
+                    if (selectedPaymentMethod?.paymentLink) {
+                      window.open(selectedPaymentMethod.paymentLink, '_blank');
+                    }
+                    handleConfirmPayment();
+                  }}
+                >
+                  Click to Complete Payment
                 </Button>
                 <p className="text-[10px] text-center text-muted-foreground mt-2">
-                  By clicking "I Have Paid", you confirm that you have sent the payment.
+                  By clicking "Click to Complete Payment", you confirm that you have sent the payment.
                 </p>
               </div>
             </div>
