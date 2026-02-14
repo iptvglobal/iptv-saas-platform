@@ -379,7 +379,7 @@ export default function Checkout() {
         
         {/* Payment Instructions Dialog */}
         <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] flex flex-col max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Payment Instructions</DialogTitle>
               <DialogDescription>
@@ -387,7 +387,7 @@ export default function Checkout() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-4 overflow-y-auto flex-1">
               <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                 <h4 className="font-semibold text-primary mb-2">Amount to Pay: ${price}</h4>
                 <p className="text-sm text-muted-foreground">
@@ -396,18 +396,18 @@ export default function Checkout() {
               </div>
               
               {selectedMethod === "crypto-widget" ? (
-                <div className="space-y-4">
+                <div className="space-y-4 w-full">
                   <p className="text-sm font-medium text-center mb-4">
                     Complete your payment using the widget below
                   </p>
-                  <div className="flex justify-center overflow-x-auto">
+                  <div className="flex justify-center w-full overflow-x-auto">
                     <iframe 
                       src={`https://nowpayments.io/embeds/payment-widget?iid=${paymentWidget?.invoiceId}`}
                       width="410" 
                       height="696" 
                       frameBorder="0" 
-                      scrolling="no" 
-                      style={{ overflow: 'hidden' }}
+                      scrolling="yes" 
+                      style={{ overflow: 'auto', minWidth: '410px' }}
                       title="NOWPayments Payment Widget"
                     >
                       Can't load widget
@@ -466,8 +466,9 @@ export default function Checkout() {
                   )}
                 </div>
               )}
-              
-              <div className="pt-4">
+            </div>
+            
+            <div className="pt-4 border-t mt-4">
               <Button 
                 className="w-full gradient-primary" 
                 onClick={() => {
@@ -482,7 +483,6 @@ export default function Checkout() {
               <p className="text-[10px] text-center text-muted-foreground mt-2">
                 By clicking "I have Complete Payment", you confirm that you have completed the payment.
               </p>
-              </div>
             </div>
           </DialogContent>
         </Dialog>
