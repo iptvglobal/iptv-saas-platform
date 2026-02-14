@@ -79,19 +79,13 @@ export default function Checkout() {
     if (paymentLinkCountdown > 0) {
       const timer = setTimeout(() => setPaymentLinkCountdown(paymentLinkCountdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (paymentLinkCountdown === 0 && showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+    } else if (paymentLinkCountdown === 0 && showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened && paymentLinkCountdown !== -1) {
       // Auto-open payment link after countdown reaches 0
       window.open(selectedPaymentMethod.paymentLink, '_blank');
       setPaymentLinkOpened(true);
+      setPaymentLinkCountdown(-1); // Mark as completed
     }
   }, [paymentLinkCountdown, showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
-  
-  // Start countdown when payment dialog opens
-  useEffect(() => {
-    if (showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
-      setPaymentLinkCountdown(7);
-    }
-  }, [showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
   
   const validateMacAddress = (mac: string) => {
     // Flexible MAC address validation:
@@ -155,7 +149,7 @@ export default function Checkout() {
       
       setOrderId(result.orderId || null);
       setPaymentLinkOpened(false); // Reset for next payment
-      setPaymentLinkCountdown(0); // Reset countdown
+      setPaymentLinkCountdown(7); // Start 7-second countdown
       setShowPaymentDialog(true);
     } catch (error) {
       toast.error("Failed to create order. Please try again.");
@@ -425,7 +419,7 @@ export default function Checkout() {
                         onClick={() => {
                           window.open(selectedPaymentMethod.paymentLink!, '_blank');
                           setPaymentLinkOpened(true);
-                          setPaymentLinkCountdown(0);
+                          setPaymentLinkCountdown(-1);
                         }}
                       >
                         Open Payment Link
