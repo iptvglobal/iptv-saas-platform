@@ -573,16 +573,22 @@ export default function GuestCheckout() {
             
             {selectedMethod === "crypto-widget" ? (
               <div className="space-y-4">
-                <p className="text-sm">
-                  Click the button below to open the secure payment gateway.
+                <p className="text-sm font-medium text-center mb-4">
+                  Complete your payment using the widget below
                 </p>
-                <Button 
-                  className="w-full" 
-                  onClick={() => window.open(`https://nowpayments.io/payment?iid=${paymentWidget?.invoiceId}`, '_blank')}
-                >
-                  Open Payment Gateway
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
+                <div className="flex justify-center overflow-x-auto">
+                  <iframe 
+                    src={`https://nowpayments.io/embeds/payment-widget?iid=${paymentWidget?.invoiceId}`}
+                    width="410" 
+                    height="696" 
+                    frameBorder="0" 
+                    scrolling="no" 
+                    style={{ overflow: 'hidden' }}
+                    title="NOWPayments Payment Widget"
+                  >
+                    Can't load widget
+                  </iframe>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
