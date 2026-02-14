@@ -52,6 +52,7 @@ export default function Checkout() {
   const [orderId, setOrderId] = useState<number | null>(null);
   const [paymentLinkCountdown, setPaymentLinkCountdown] = useState(0);
   const [paymentLinkOpened, setPaymentLinkOpened] = useState(false);
+  const [showAutoOpenButton, setShowAutoOpenButton] = useState(false);
   
   // Credentials selection state
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
@@ -79,13 +80,19 @@ export default function Checkout() {
     if (paymentLinkCountdown > 0) {
       const timer = setTimeout(() => setPaymentLinkCountdown(paymentLinkCountdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (paymentLinkCountdown === 0 && showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened && paymentLinkCountdown !== -1) {
-      // Auto-open payment link after countdown reaches 0
-      window.open(selectedPaymentMethod.paymentLink, '_blank');
-      setPaymentLinkOpened(true);
-      setPaymentLinkCountdown(-1); // Mark as completed
+    } else if (paymentLinkCountdown === 0 && showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+      // Show button to let user click to open (avoids pop-up blocking)
+      setShowAutoOpenButton(true);
     }
   }, [paymentLinkCountdown, showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
+  
+  // Start countdown when payment dialog opens
+  useEffect(() => {
+    if (showPaymentDialog && selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+      setPaymentLinkCountdown(7);
+      setShowAutoOpenButton(false);
+    }
+  }, [showPaymentDialog, selectedPaymentMethod?.paymentLink, paymentLinkOpened]);
   
   const validateMacAddress = (mac: string) => {
     // Flexible MAC address validation:
@@ -149,7 +156,8 @@ export default function Checkout() {
       
       setOrderId(result.orderId || null);
       setPaymentLinkOpened(false); // Reset for next payment
-      setPaymentLinkCountdown(7); // Start 7-second countdown
+      setPaymentLinkCountdown(0); // Reset countdown
+      setShowAutoOpenButton(false);
       setShowPaymentDialog(true);
     } catch (error) {
       toast.error("Failed to create order. Please try again.");
@@ -175,6 +183,13 @@ export default function Checkout() {
     }
     setIsProcessing(false);
     setShowConfirmDialog(false);
+  };
+  
+  const openPaymentLink = () => {
+    if (selectedPaymentMethod?.paymentLink) {
+      window.open(selectedPaymentMethod.paymentLink, '_blank');
+      setPaymentLinkOpened(true);
+    }
   };
   
   if (planLoading || !plan) {
@@ -413,38 +428,54 @@ export default function Checkout() {
                         </div>
                       )}
                       
-                      {/* Payment Link Button */}
-                      <Button 
-                        className="w-full" 
-                        onClick={() => {
-                          window.open(selectedPaymentMethod.paymentLink!, '_blank');
-                          setPaymentLinkOpened(true);
-                          setPaymentLinkCountdown(-1);
-                        }}
-                      >
-                        Open Payment Link
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </Button>
+                      {/* Auto-Open Button (appears after countdown) */}
+                      {showAutoOpenButton && !paymentLinkOpened && (
+                        <div className="space-y-3">
+                          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                            <p className="text-sm text-green-900 font-medium mb-3">
+                              Ready to open payment link!
+                            </p>
+                            <Button 
+                              className="w-full bg-green-600 hover:bg-green-700" 
+                              onClick={openPaymentLink}
+                            >
+                              Click Here to Open Payment Link
+                              <ExternalLink className="ml-2 h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Payment Link Button (always available) */}
+                      {!showAutoOpenButton && !paymentLinkOpened && (
+                        <Button 
+                          className="w-full" 
+                          onClick={openPaymentLink}
+                        >
+                          Open Payment Link
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
               )}
               
               <div className="pt-4">
-                <Button 
-                  className="w-full gradient-primary" 
-                  onClick={() => {
-                    if (selectedPaymentMethod?.paymentLink) {
-                      window.open(selectedPaymentMethod.paymentLink, '_blank');
-                    }
-                    handleConfirmPayment();
-                  }}
-                >
-                  Click to Complete Payment
-                </Button>
-                <p className="text-[10px] text-center text-muted-foreground mt-2">
-                  By clicking "Click to Complete Payment", you confirm that you have sent the payment.
-                </p>
+              <Button 
+                className="w-full gradient-primary" 
+                onClick={() => {
+                  if (selectedPaymentMethod?.paymentLink && !paymentLinkOpened) {
+                    openPaymentLink();
+                  }
+                  handleConfirmPayment();
+                }}
+              >
+                I have Complete Payment
+              </Button>
+              <p className="text-[10px] text-center text-muted-foreground mt-2">
+                By clicking "I have Complete Payment", you confirm that you have completed the payment.
+              </p>
               </div>
             </div>
           </DialogContent>
