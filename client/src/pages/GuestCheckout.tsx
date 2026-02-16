@@ -75,10 +75,7 @@ export default function GuestCheckout() {
   const [paymentLinkOpened, setPaymentLinkOpened] = useState(false);
   const [showAutoOpenButton, setShowAutoOpenButton] = useState(false);
   
-  // Credentials selection state
-  const [selectedCredentialsType, setSelectedCredentialsType] = useState<CredentialsType>(null);
-  const [macAddress, setMacAddress] = useState("");
-  const [credentialsSubmitted, setCredentialsSubmitted] = useState(false);
+
   
   const price = plan?.pricing?.find(p => p.connections === connections)?.price || "0.00";
   
@@ -125,13 +122,7 @@ export default function GuestCheckout() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
   
-  const validateMacAddress = (mac: string) => {
-    // Flexible MAC address validation:
-    // 1. Remove all non-alphanumeric characters (colons, hyphens, spaces, dots, etc.)
-    const cleanMac = mac.replace(/[^0-9A-Z]/gi, '').toUpperCase();
-    // 2. Check if it's exactly 12 alphanumeric characters (A-Z and 0-9)
-    return /^[0-9A-Z]{12}$/.test(cleanMac);
-  };
+
   
   const handleGuestCheckout = async () => {
     // Validate inputs
@@ -173,8 +164,6 @@ export default function GuestCheckout() {
           paymentWidgetId: selectedMethod === "crypto-widget" ? paymentWidget?.id : undefined,
           paymentMethodName: selectedMethod === "crypto-widget" ? "Cryptocurrency" : selectedPaymentMethod?.name,
           paymentMethodType: selectedMethod === "crypto-widget" ? "crypto" : selectedPaymentMethod?.type,
-          credentialsType: selectedCredentialsType,
-          macAddress: selectedCredentialsType === "mag" ? macAddress : undefined,
         }),
       });
       
@@ -188,7 +177,6 @@ export default function GuestCheckout() {
       
       setAccountCreated(true);
       setOrderId(data.orderId);
-      setCredentialsSubmitted(true);
       setPaymentLinkOpened(false); // Reset for payment dialog
       setPaymentLinkCountdown(0); // Reset countdown
       setShowAutoOpenButton(false);
@@ -233,12 +221,6 @@ export default function GuestCheckout() {
   };
   
   const handleProceedToPayment = () => {
-    // Show credentials dialog if not already submitted (for both new and existing users)
-    if (!credentialsSubmitted) {
-      setShowCredentialsDialog(true);
-      return;
-    }
-    
     if (isAuthenticated || accountCreated) {
       handleAuthenticatedCheckout();
     } else {
@@ -246,33 +228,7 @@ export default function GuestCheckout() {
     }
   };
   
-  const handleCredentialsSelection = () => {
-    if (!selectedCredentialsType) {
-      toast.error("Please select a credentials type");
-      return;
-    }
-    
-    if (selectedCredentialsType === "mag" && !macAddress) {
-      toast.error("Please enter your MAC address");
-      return;
-    }
-    
-    if (selectedCredentialsType === "mag" && !validateMacAddress(macAddress)) {
-      toast.error("Invalid MAC address. Please use format XX:XX:XX:XX:XX:XX");
-      return;
-    }
-    
-    setShowCredentialsDialog(false);
-    setCredentialsSubmitted(true);
-    
-    // If already authenticated, proceed to authenticated checkout
-    // Otherwise, proceed to guest checkout
-    if (isAuthenticated) {
-      handleAuthenticatedCheckout();
-    } else {
-      handleGuestCheckout();
-    }
-  };
+
   
   const handleConfirmPayment = () => {
     setShowPaymentDialog(false);
@@ -479,80 +435,7 @@ export default function GuestCheckout() {
         </Button>
       </div>
       
-      {/* Credentials Dialog */}
-      <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Select Credentials Type</DialogTitle>
-            <DialogDescription>
-              Choose how you want to access your IPTV service
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <RadioGroup value={selectedCredentialsType || ""} onValueChange={(val) => setSelectedCredentialsType(val as CredentialsType)}>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
-                <RadioGroupItem value="xtream" id="xtream" />
-                <Label htmlFor="xtream" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4 text-primary" />
-                    <div className="font-medium">Xtream Codes</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">Username, Password & Server URL</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
-                <RadioGroupItem value="m3u" id="m3u" />
-                <Label htmlFor="m3u" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Code className="h-4 w-4 text-primary" />
-                    <div className="font-medium">M3U Playlist</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">Playlist URL & EPG URL</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
-                <RadioGroupItem value="mag" id="mag" />
-                <Label htmlFor="mag" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Tv className="h-4 w-4 text-primary" />
-                    <div className="font-medium">MAG / Portal</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">For MAG boxes (requires MAC address)</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer">
-                <RadioGroupItem value="enigma2" id="enigma2" />
-                <Label htmlFor="enigma2" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <Code className="h-4 w-4 text-primary" />
-                    <div className="font-medium">Enigma2</div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">For Enigma2 devices</div>
-                </Label>
-              </div>
-            </RadioGroup>
-            
-            {selectedCredentialsType === "mag" && (
-              <div className="space-y-2 mt-2">
-                <Label htmlFor="mac">MAC Address</Label>
-                <Input
-                  id="mac"
-                  placeholder="XX:XX:XX:XX:XX:XX"
-                  value={macAddress}
-                  onChange={(e) => setMacAddress(e.target.value)}
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
-                </p>
-              </div>
-            )}
-          </div>
-          <Button onClick={handleCredentialsSelection} className="w-full gradient-primary">
-            Confirm & Continue
-          </Button>
-        </DialogContent>
-      </Dialog>
-      
+
       {/* Payment Instructions Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="sm:max-w-[500px] flex flex-col max-h-[90vh]">
